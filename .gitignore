@@ -1,0 +1,23 @@
+*.env
+*.key
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+node_modules/
+
+# Local settings with secrets/tokens
+.claude/settings.local.json
+
+# Personal profile (use about.example.md as template)
+context/about.md
+
+# Project alignment artifacts (business-specific)
+projects/*/align.md
+projects/*/context.md
+projects/*/prd.md
+projects/*/issues/
+projects/*/status.md
+
+# Session logs
+logs/sessions/*.md
