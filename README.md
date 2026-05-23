@@ -143,6 +143,8 @@ ai-os-v2/
 │       ├── to-sandcastle.md
 │       ├── relay.md
 │       └── improve-codebase-architecture/
+├── templates/
+│   └── kanban.html                # Kanban board template (copied to projects at handoff)
 ├── context/
 │   ├── about.example.md           # Profile template (copy to about.md)
 │   └── operating-rules.md        # Pipeline rules and conventions
