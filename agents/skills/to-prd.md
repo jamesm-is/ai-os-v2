@@ -1,8 +1,3 @@
----
-name: to-prd
-description: Synthesize a PRD from alignment outputs. Do not re-interview the user. Use after /align has locked decisions, or when the user says "write the PRD", "generate PRD", or "to-prd".
----
-
 # To PRD
 
 Take the alignment outputs and synthesize a PRD. Do NOT interview the user — just synthesize what was already resolved during alignment.
@@ -11,7 +6,7 @@ Take the alignment outputs and synthesize a PRD. Do NOT interview the user — j
 
 1. Read `projects/<project-name>/context.md` (the domain glossary).
 2. Read `projects/<project-name>/align.md` (the decision log).
-3. Confirm `projects/<project-name>/status.md` shows `stage: aligned`. If not, tell the user to finish `/align` first.
+3. Confirm `projects/<project-name>/status.md` shows `stage: aligned`. If not, tell the user to finish the align step first.
 
 ## Process
 
@@ -25,7 +20,7 @@ Take the alignment outputs and synthesize a PRD. Do NOT interview the user — j
 
 5. **Update** `projects/<project-name>/status.md` to `stage: prd-ready`.
 
-6. Tell the user to run `/to-issues` to decompose the PRD into vertical slice issues.
+6. Tell the user to run the to-issues step next (see `agents/skills/to-issues.md`).
 
 ## PRD Template
 

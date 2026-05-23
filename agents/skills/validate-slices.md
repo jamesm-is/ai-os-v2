@@ -1,8 +1,3 @@
----
-name: validate-slices
-description: Audit generated issues to verify they are true vertical slices, not horizontal layer-based tasks. Use after /to-issues, when reviewing issue quality, or when the user says "validate slices", "check these issues", "are these vertical enough", or "audit issues".
----
-
 # Vertical Slice Validator
 
 Audit implementation issues to determine whether each one is a true vertical slice or a horizontal/layer-based task disguised as a slice. Prefer targeted rewrites over regenerating the full issue list.
@@ -124,8 +119,8 @@ Then ...
 ## Decision Rule
 
 - **≥80% pass** — proceed after manual fixes to borderline/failed issues.
-- **50–79% pass** — revise failed and borderline issues before continuing to `/handoff`.
-- **<50% pass** — re-run `/to-issues` with the audit feedback attached as constraints. Provide the exact instruction to feed back into to-issues.
+- **50–79% pass** — revise failed and borderline issues before continuing to handoff.
+- **<50% pass** — re-run the to-issues step with the audit feedback attached as constraints. Provide the exact instruction to feed back into to-issues.
 
 ## After the Audit
 
@@ -134,4 +129,4 @@ Then ...
 3. Update `projects/<project-name>/status.md`:
    - If ≥80% pass: set `stage: slices-validated`
    - If <80% pass: keep `stage: issues-ready` (slices need work before handoff)
-4. Tell the user the next step: proceed to `/handoff` (if passing), fix issues (if borderline), or re-run `/to-issues` (if failing).
+4. Tell the user the next step: proceed to handoff (see `agents/skills/handoff.md`) if passing, fix issues if borderline, or re-run to-issues (see `agents/skills/to-issues.md`) if failing.

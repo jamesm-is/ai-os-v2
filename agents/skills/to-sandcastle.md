@@ -1,8 +1,3 @@
----
-name: to-sandcastle
-description: Generate a .sandcastle/ scaffold for agent orchestration in a handed-off project. Use after /handoff, or when the user says "to-sandcastle", "set up sandcastle", "agent scaffold", or "prepare for agents".
----
-
 # To Sandcastle
 
 Generate the `.sandcastle/` orchestration scaffold in a project repo so it can run autonomous agents via Sandcastle.
@@ -10,7 +5,7 @@ Generate the `.sandcastle/` orchestration scaffold in a project repo so it can r
 ## Before Starting
 
 1. Read `projects/<project-name>/status.md`. Confirm `stage: handed-off-to-github`.
-   - If `stage: slices-validated`, tell the user to run `/handoff` first.
+   - If `stage: slices-validated`, tell the user to run the handoff step first (see `agents/skills/handoff.md`).
    - If earlier, tell the user which step to complete first.
 2. Read `projects/<project-name>/prd.md` — specifically the **Technical Stack** section.
 3. Read `projects/<project-name>/context.md` for domain vocabulary.

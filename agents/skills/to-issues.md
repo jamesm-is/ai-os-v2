@@ -1,17 +1,12 @@
----
-name: to-issues
-description: Decompose a PRD into vertical slice issues. Use after /to-prd, or when the user says "break this down", "create issues", "to-issues", or "slice this".
----
-
 # To Issues
 
-Break the PRD into independently-grabbable issues using vertical slices (tracer bullets). Issues are written as local markdown files in ai-os-v2 — they get pushed to GitHub Issues later during `/to-sandcastle`.
+Break the PRD into independently-grabbable issues using vertical slices (tracer bullets). Issues are written as local markdown files in ai-os-v2 — they get pushed to GitHub Issues later during the to-sandcastle step.
 
 ## Before Starting
 
 1. Read `projects/<project-name>/prd.md`.
 2. Read `projects/<project-name>/context.md` for glossary vocabulary.
-3. Confirm `projects/<project-name>/status.md` shows `stage: prd-ready`. If not, tell the user to finish `/to-prd` first.
+3. Confirm `projects/<project-name>/status.md` shows `stage: prd-ready`. If not, tell the user to finish the to-prd step first.
 
 ## Process
 
@@ -99,4 +94,4 @@ What should be tested for this slice. Behavior-focused, not implementation-focus
 
 1. Update `projects/<project-name>/status.md` to `stage: issues-ready`.
 2. Print a summary: total slices, phases, HITL count, AFK count, tracer bullet identified.
-3. Tell the user to run `/validate-slices` to audit issue quality before proceeding to `/handoff`.
+3. Tell the user to run the validate-slices step next (see `agents/skills/validate-slices.md`), then handoff (see `agents/skills/handoff.md`).

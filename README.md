@@ -19,24 +19,29 @@ Every project flows through the pipeline, run in order:
 | 3 | `/to-issues` | Decompose PRD into vertical slice issues with dependencies and phase labels. |
 | 4 | `/validate-slices` | Audit every issue for vertical slice quality. Catches horizontal decomposition, Phase 0 leakage, and missing acceptance criteria. |
 | 5 | `/handoff` | Create the project repo with all artifacts, install skills, and push to GitHub. |
-| 6 | `/to-sandcastle` | Generate agent orchestration scaffold (Dockerfile, prompts, orchestration loop). |
 
 After step 5, the project is fully self-governing. ai-os-v2's job is done.
+
+**Post-handoff (optional):** `/to-sandcastle` — generate agent orchestration scaffold (Dockerfile, prompts, orchestration loop) with subscription or API key auth.
 
 ## What you get at the end
 
 A project repo in `~/ai-projects/<project-name>/` with:
 
-- **CLAUDE.md** — project boot file with domain rules, spec pointers, and working conventions
+- **CLAUDE.md** — project boot file for Claude Code
+- **AGENTS.md** — project boot file for Codex / other agents
 - **CONTEXT.md** — domain glossary built during alignment (the source of truth for terminology)
 - **docs/prd.md** — full product requirements document
-- **docs/issues/** — vertical slice issue files (also pushed to GitHub Issues)
+- **docs/issues/** — vertical slice issue files (pushed to GitHub Issues via `/to-sandcastle`)
 - **docs/slice-audit.md** — vertical slice audit report from validate-slices
+- **docs/kanban.html** — visual kanban board (open in browser, auto-refreshes every 30s)
+- **docs/kanban-state.json** — board state (updated by Sandcastle agents during autonomous runs)
 - **docs/adr/** — architectural decision records
-- **.claude/skills/** — full pipeline and utility skills so the project can plan new features in-repo:
+- **.claude/skills/** — full pipeline and utility skills (Claude Code slash commands):
   - Pipeline: align, to-prd, to-issues, validate-slices, to-sandcastle (adapted for project-repo paths)
   - Architecture: improve-codebase-architecture (codebase deepening and refactoring audits)
   - Utility: relay (session context handoff)
+- **agents/skills/** — tool-neutral mirror of all skills (flat markdown, no frontmatter — for Codex / other agents)
 - **.sandcastle/** — autonomous agent orchestration (after `/to-sandcastle`):
   - `main.mts` — orchestration loop (plan → implement → review → PR)
   - `Dockerfile` — containerized build environment with Claude Code + Codex CLI
@@ -63,9 +68,9 @@ Issues are worked in parallel. Each gets its own Docker container and branch. Th
 
 ## Prerequisites
 
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated
+- An AI coding agent ([Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex](https://openai.com/index/codex/), or similar)
 - [GitHub CLI](https://cli.github.com/) (`gh`) installed and authenticated
-- For Sandcastle: `@ai-hero/sandcastle` (installed automatically during `/to-sandcastle`), plus API keys for Anthropic and OpenAI
+- For Sandcastle: `@ai-hero/sandcastle` (installed automatically during `/to-sandcastle`), plus either subscription tokens (Claude + ChatGPT) or API keys (Anthropic + OpenAI)
 
 ## Getting started
 
@@ -77,12 +82,27 @@ Issues are worked in parallel. Each gets its own Docker container and branch. Th
 
 2. Copy `context/about.example.md` to `context/about.md` and fill in your details. This shapes how the alignment grill behaves.
 
-3. Open Claude Code in the repo and describe your app idea. Then run:
-   ```
-   /align
-   ```
+3. Start your AI agent in the repo and describe your app idea, then run the pipeline.
 
-4. Follow the pipeline in order. Each skill tells you what to run next.
+### Claude Code
+
+Skills are auto-discovered as slash commands:
+
+```
+/align
+```
+
+Follow the pipeline in order. Each skill tells you what to run next.
+
+### Codex / other agents
+
+The same skills are available as plain markdown files in `agents/skills/`. Point your agent at them in order:
+
+```
+Read agents/skills/align.md and follow its instructions
+```
+
+Your agent reads `AGENTS.md` as its boot file (same content as `CLAUDE.md`, tool-neutral language). Run each skill in order: `align.md` → `to-prd.md` → `to-issues.md` → `validate-slices.md` → `handoff.md`.
 
 ## Design principles
 
@@ -96,23 +116,34 @@ Issues are worked in parallel. Each gets its own Docker container and branch. Th
 
 ```
 ai-os-v2/
-├── .claude/
-│   ├── settings.json              # Claude Code permissions
-│   └── skills/                    # All skills
-│       ├── align/                 # Domain grill + stack derivation
-│       ├── to-prd/                # PRD synthesis
-│       ├── to-issues/             # Vertical slice decomposition
-│       ├── validate-slices/       # Slice quality audit
-│       ├── handoff/               # Project repo creation + skill install
-│       ├── to-sandcastle/         # Agent orchestration scaffold
-│       ├── improve-codebase-architecture/  # Deepening audit (5 files)
-│       └── relay/                 # Session context handoff
+├── .claude/                       # Claude Code integration
+│   ├── settings.json              #   permissions
+│   └── skills/                    #   skills (auto-discovered as /commands)
+│       ├── align/
+│       ├── to-prd/
+│       ├── to-issues/
+│       ├── validate-slices/
+│       ├── handoff/
+│       ├── to-sandcastle/
+│       ├── improve-codebase-architecture/
+│       └── relay/
+├── agents/                        # Tool-neutral mirror (Codex, etc.)
+│   └── skills/                    #   same skills as flat markdown
+│       ├── align.md
+│       ├── to-prd.md
+│       ├── to-issues.md
+│       ├── validate-slices.md
+│       ├── handoff.md
+│       ├── to-sandcastle.md
+│       ├── relay.md
+│       └── improve-codebase-architecture/
 ├── context/
-│   ├── about.example.md            # Profile template (copy to about.md)
+│   ├── about.example.md           # Profile template (copy to about.md)
 │   └── operating-rules.md        # Pipeline rules and conventions
 ├── projects/                      # Alignment artifacts per project
 ├── logs/sessions/                 # Session logs
-├── CLAUDE.md                      # Boot file
+├── CLAUDE.md                      # Boot file (Claude Code)
+├── AGENTS.md                      # Boot file (Codex / other agents)
 └── README.md
 ```
 

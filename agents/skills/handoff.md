@@ -1,7 +1,3 @@
----
-name: handoff
-description: Package alignment artifacts, install pipeline skills, and create a project repo with GitHub remote in ai-projects/. Use after /validate-slices, or when the user says "handoff", "launch this", "create the project", or "ship it".
----
 
 # Handoff
 
@@ -9,7 +5,7 @@ Package everything from the alignment pipeline and create the project repo with 
 
 ## Before Starting
 
-1. Read `projects/<project-name>/status.md`. Confirm `stage: slices-validated` (set by /validate-slices).
+1. Read `projects/<project-name>/status.md`. Confirm `stage: slices-validated` (set by the validate-slices step).
 2. If not ready, tell the user which step to complete first.
 
 ## Exit Criteria Validation
@@ -228,13 +224,13 @@ Contents:
 This project is self-governing. New features can be planned and built entirely in-repo
 using the installed pipeline skills — no need to return to ai-os-v2.
 
-Next: Run /to-sandcastle to generate the agent orchestration scaffold (if warranted),
+Next: Run the to-sandcastle step to generate the agent orchestration scaffold (if warranted),
 or start working issues manually. Open docs/kanban.html in a browser to visualize progress.
 ```
 
 ## What Handoff Does NOT Do
 
 - Does not scaffold code (no src/, no package.json, no framework setup)
-- Does not install hooks or coding standards (those are stack-specific — the first coding session or /to-sandcastle handles them)
-- Does not set up Sandcastle or agent orchestration (that's /to-sandcastle)
+- Does not install hooks or coding standards (those are stack-specific — the first coding session or to-sandcastle handles them)
+- Does not set up Sandcastle or agent orchestration (that's the to-sandcastle step)
 - Does not run the installed skills — it only installs them so the project can use them later

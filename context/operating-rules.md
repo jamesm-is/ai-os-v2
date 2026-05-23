@@ -37,7 +37,9 @@ Operational policy for `ai-os-v2`.
 ## Handoff Rules
 
 - Projects are created in `~/ai-projects/`.
-- Handoff ships thinking artifacts (CLAUDE.md, CONTEXT.md, PRD, ADRs, issue slices) plus pipeline and utility skills.
+- Handoff ships thinking artifacts (CLAUDE.md, AGENTS.md, CONTEXT.md, PRD, ADRs, issue slices) plus pipeline and utility skills.
+- Handoff generates a kanban board (`docs/kanban.html` + `docs/kanban-state.json`) for visual issue tracking.
+- Handoff installs skills in two formats: `.claude/skills/` (Claude Code) and `agents/skills/` (Codex / other agents).
 - No code, no framework scaffolding at handoff time.
 - Handoff installs skills so the project is fully self-governing — it can run the full planning loop for new features without returning to ai-os-v2.
 - Handoff is the only skill that stays ai-os-v2-only. All other skills ship to the project repo.
