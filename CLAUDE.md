@@ -46,7 +46,7 @@ projects/<project-name>/
 - No default tech stack. Every project earns its stack from its requirements.
 - CONTEXT.md entries are added only when the grill resolves genuine ambiguity — never speculatively.
 - The PRD copy in ai-os-v2 is archival. The project repo owns the living version after handoff.
-- Skills live in `.claude/skills/`. Eight skills total: pipeline (align, to-prd, to-issues, validate-slices, handoff), post-handoff (to-sandcastle), architecture (improve-codebase-architecture), utility (relay).
+- Skills live in `.claude/skills/`. Nine skills total: pipeline (align, to-prd, to-issues, validate-slices, handoff), post-handoff (to-sandcastle), architecture (improve-codebase-architecture), utility (relay, preflight).
 
 ## Session Logging
 

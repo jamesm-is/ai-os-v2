@@ -87,7 +87,11 @@ The Dockerfile, `.env.example`, and `main.mts` are all generated to match your c
 
 2. Copy `context/about.example.md` to `context/about.md` and fill in your details. This shapes how the alignment grill behaves.
 
-3. Start your AI agent in the repo and describe your app idea, then run the pipeline.
+3. Run the preflight check to verify your machine has everything needed:
+
+   **Claude Code:** `/preflight` | **Codex:** `Read agents/skills/preflight.md and follow its instructions`
+
+4. Start your AI agent in the repo and describe your app idea, then run the pipeline.
 
 ### Claude Code
 
@@ -132,7 +136,8 @@ ai-os-v2/
 │       ├── handoff/
 │       ├── to-sandcastle/
 │       ├── improve-codebase-architecture/
-│       └── relay/
+│       ├── relay/
+│       └── preflight/
 ├── agents/                        # Tool-neutral mirror (Codex, etc.)
 │   └── skills/                    #   same skills as flat markdown
 │       ├── align.md
@@ -142,6 +147,7 @@ ai-os-v2/
 │       ├── handoff.md
 │       ├── to-sandcastle.md
 │       ├── relay.md
+│       ├── preflight.md
 │       └── improve-codebase-architecture/
 ├── templates/
 │   └── kanban.html                # Kanban board template (copied to projects at handoff)

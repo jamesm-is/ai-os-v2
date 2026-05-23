@@ -27,6 +27,7 @@ Every project flows through five steps. Run them in order — each step consumes
 After handoff, optionally run **to-sandcastle** for agent orchestration. → Read `agents/skills/to-sandcastle.md`
 
 Additional skills available at any time:
+- **preflight** — Check that the local machine has all prerequisites. Run this first on a new machine. → Read `agents/skills/preflight.md`
 - **improve-codebase-architecture** — Deepening audits for live codebases. → Read `agents/skills/improve-codebase-architecture/SKILL.md`
 - **relay** — Compact the current conversation for session handoff. → Read `agents/skills/relay.md`
 
@@ -50,7 +51,7 @@ projects/<project-name>/
 - No default tech stack. Every project earns its stack from its requirements.
 - CONTEXT.md entries are added only when the grill resolves genuine ambiguity — never speculatively.
 - The PRD copy in ai-os-v2 is archival. The project repo owns the living version after handoff.
-- Skill instructions live in `agents/skills/`. Eight skills total: pipeline (align, to-prd, to-issues, validate-slices, handoff), post-handoff (to-sandcastle), architecture (improve-codebase-architecture), utility (relay).
+- Skill instructions live in `agents/skills/`. Nine skills total: pipeline (align, to-prd, to-issues, validate-slices, handoff), post-handoff (to-sandcastle), architecture (improve-codebase-architecture), utility (relay, preflight).
 
 ## Session Logging
 

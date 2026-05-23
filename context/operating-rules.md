@@ -46,11 +46,11 @@ Operational policy for `ai-os-v2`.
 
 ## Skills
 
-Eight skills total:
+Nine skills total:
 - **Pipeline (5):** align, to-prd, to-issues, validate-slices, handoff
 - **Post-handoff (1):** to-sandcastle
 - **Architecture (1):** improve-codebase-architecture
-- **Utility (1):** relay
+- **Utility (2):** relay, preflight
 
 ## Session Logging
 
