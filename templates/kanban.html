@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0a0a0b;
+  --surface: #141416;
+  --surface-2: #1c1c1f;
+  --surface-3: #242428;
+  --border: #2a2a2e;
+  --border-subtle: #1e1e22;
+  --text: #e8e8ec;
+  --text-secondary: #8b8b94;
+  --text-muted: #55555e;
+  --accent-blue: #6388f6;
+  --accent-blue-dim: #3d5cb8;
+  --accent-blue-bg: rgba(99, 136, 246, 0.08);
+  --accent-amber: #e8a64a;
+  --accent-amber-dim: #a67530;
+  --accent-amber-bg: rgba(232, 166, 74, 0.08);
+  --accent-green: #4ade80;
+  --accent-green-dim: #22804a;
+  --accent-green-bg: rgba(74, 222, 128, 0.06);
+  --accent-slate: #64748b;
+  --accent-slate-bg: rgba(100, 116, 139, 0.08);
+  --accent-red: #f87171;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --font: 'Inter', -apple-system, system-ui, sans-serif;
+  --mono: 'JetBrains Mono', 'SF Mono', monospace;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+}
+
+/* === NOISE TEXTURE OVERLAY === */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.025;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+body > * { position: relative; z-index: 1; }
+
+/* === HEADER === */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 20px 32px;
+  background:
+    radial-gradient(ellipse 80% 200% at 20% -40%, rgba(99, 136, 246, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 180% at 80% -30%, rgba(167, 139, 250, 0.05) 0%, transparent 50%),
+    rgba(10, 10, 11, 0.88);
+  backdrop-filter: blur(24px) saturate(1.3);
+}
+
+.header-inner {
+  max-width: 1680px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header-left { display: flex; align-items: center; gap: 16px; }
+
+.header-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--accent-blue) 0%, #a78bfa 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.5px;
+  box-shadow: 0 0 16px rgba(99, 136, 246, 0.25);
+}
+
+.header h1 {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+}
+
+.header-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legend-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+}
+
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  animation: pulse 2.5s ease-in-out infinite;
+}
+
+.shutdown-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.shutdown-btn:hover {
+  color: var(--accent-red);
+  border-color: rgba(248, 113, 113, 0.3);
+  background: rgba(248, 113, 113, 0.08);
+}
+
+.shutdown-btn.stopped {
+  color: var(--text-muted);
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.4); }
+  50% { opacity: 0.5; box-shadow: 0 0 0 4px rgba(74, 222, 128, 0); }
+}
+
+/* === SUMMARY BAR === */
+.summary {
+  max-width: 1680px;
+  margin: 0 auto;
+  padding: 20px 32px 0;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.progress-ring {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}
+
+.progress-ring svg { transform: rotate(-90deg); }
+
+.progress-ring-bg {
+  fill: none;
+  stroke: var(--surface-3);
+  stroke-width: 4;
+}
+
+.progress-ring-fill {
+  fill: none;
+  stroke: var(--accent-green);
+  stroke-width: 4;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  filter: drop-shadow(0 0 4px rgba(74, 222, 128, 0.3));
+}
+
+.progress-ring-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.summary-stats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.stat {
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  padding: 4px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.stat strong {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.stat.afk strong { color: var(--accent-blue); }
+.stat.hitl strong { color: var(--accent-amber); }
+.stat.done strong { color: var(--accent-green); }
+.stat.active strong { color: var(--accent-blue); }
+
+/* === BOARD === */
+.board {
+  max-width: 1680px;
+  margin: 0 auto;
+  padding: 20px 32px 40px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.column {
+  min-height: calc(100vh - 220px);
+}
+
+.column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  margin-bottom: 8px;
+  border-bottom: 2px solid var(--border-subtle);
+}
+
+.column-header.backlog { border-bottom-color: var(--accent-slate); }
+.column-header.in-progress { border-bottom-color: var(--accent-blue); }
+.column-header.review { border-bottom-color: var(--accent-amber); }
+.column-header.done-col { border-bottom-color: var(--accent-green); }
+
+.column-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+}
+
+.column-header.backlog .column-title { color: var(--accent-slate); }
+.column-header.in-progress .column-title { color: var(--accent-blue); }
+.column-header.review .column-title { color: var(--accent-amber); }
+.column-header.done-col .column-title { color: var(--accent-green); }
+
+.column-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.column-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.column-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 120px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* === PHASE DIVIDER === */
+.phase-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 0 6px;
+}
+
+.phase-divider-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--border) 0%, transparent 100%);
+}
+
+.phase-divider-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* === CARD === */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  cursor: default;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: cardIn 0.4s ease forwards;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease, box-shadow 0.25s ease;
+}
+
+@keyframes cardIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.card:hover {
+  border-color: var(--border);
+  background: var(--surface-2);
+  transform: translateY(-1px);
+}
+
+.card.afk { border-left: 3px solid var(--accent-blue-dim); }
+.card.hitl { border-left: 3px solid var(--accent-amber-dim); }
+
+.card.afk:hover {
+  border-left-color: var(--accent-blue);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.25),
+    0 0 20px rgba(99, 136, 246, 0.07),
+    inset 0 0 20px rgba(99, 136, 246, 0.02);
+}
+
+.card.hitl:hover {
+  border-left-color: var(--accent-amber);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.25),
+    0 0 20px rgba(232, 166, 74, 0.07),
+    inset 0 0 20px rgba(232, 166, 74, 0.02);
+}
+
+.card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.card-id {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.card.afk .card-id { color: var(--accent-blue); }
+.card.hitl .card-id { color: var(--accent-amber); }
+
+.card-badges {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.badge {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.badge-afk {
+  color: var(--accent-blue);
+  background: var(--accent-blue-bg);
+}
+
+.badge-hitl {
+  color: var(--accent-amber);
+  background: var(--accent-amber-bg);
+}
+
+.badge-phase {
+  font-family: var(--mono);
+  color: var(--text-muted);
+  background: var(--surface-3);
+}
+
+.card-title {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+
+.card-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progress-track {
+  flex: 1;
+  height: 3px;
+  background: var(--surface-3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent-blue-dim);
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.progress-fill.complete {
+  background: var(--accent-green);
+  box-shadow: 0 0 6px rgba(74, 222, 128, 0.3);
+}
+
+.progress-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.progress-label.complete { color: var(--accent-green); }
+
+.card-blocked {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.blocked-tag {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  background: var(--surface-3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.blocked-tag::before {
+  content: '';
+  display: block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent-red);
+  opacity: 0.5;
+}
+
+/* === DONE CARDS === */
+.card.is-done {
+  opacity: 0;
+  animation: cardIn 0.4s ease forwards;
+}
+
+.card.is-done .card-inner {
+  opacity: 0.45;
+  transition: opacity 0.2s ease;
+}
+
+.card.is-done:hover .card-inner { opacity: 0.75; }
+
+.card.is-done {
+  border-left-color: var(--accent-green-dim);
+}
+
+.card.is-done:hover {
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.25),
+    0 0 20px rgba(74, 222, 128, 0.05);
+}
+
+.card.is-done .card-id { color: var(--accent-green); }
+
+/* === RESPONSIVE === */
+@media (max-width: 1200px) {
+  .board { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .board { grid-template-columns: 1fr; }
+  .header { padding: 16px 20px; }
+  .summary { padding: 16px 20px 0; }
+  .board { padding: 16px 20px 40px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="header-left">
+      <div class="header-icon" id="header-icon">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <rect x="1" y="1" width="3.5" height="14" rx="1" fill="white" opacity="0.9"/>
+          <rect x="6.25" y="1" width="3.5" height="9" rx="1" fill="white" opacity="0.7"/>
+          <rect x="11.5" y="1" width="3.5" height="5" rx="1" fill="white" opacity="0.5"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Project Board</h1>
+        <div class="header-meta" id="header-meta"></div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="legend">
+        <div class="legend-item">
+          <div class="legend-dot" style="background: var(--accent-blue)"></div>
+          AFK
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background: var(--accent-amber)"></div>
+          HITL
+        </div>
+      </div>
+      <div class="live-indicator">
+        <div class="live-dot"></div>
+        <span id="refresh-time">&mdash;</span>
+      </div>
+      <button class="shutdown-btn" id="shutdown-btn" title="Stop board server">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <path d="M8 1v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M4.5 3.5a6 6 0 1 0 7 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="summary" id="summary"></div>
+
+<div class="board">
+  <div class="column">
+    <div class="column-header backlog">
+      <span class="column-title">Backlog</span>
+      <span class="column-count" id="count-backlog">0</span>
+    </div>
+    <div class="column-cards" id="col-backlog"></div>
+  </div>
+  <div class="column">
+    <div class="column-header in-progress">
+      <span class="column-title">In Progress</span>
+      <span class="column-count" id="count-in-progress">0</span>
+    </div>
+    <div class="column-cards" id="col-in-progress"></div>
+  </div>
+  <div class="column">
+    <div class="column-header review">
+      <span class="column-title">Review</span>
+      <span class="column-count" id="count-review">0</span>
+    </div>
+    <div class="column-cards" id="col-review"></div>
+  </div>
+  <div class="column">
+    <div class="column-header done-col">
+      <span class="column-title">Done</span>
+      <span class="column-count" id="count-done">0</span>
+    </div>
+    <div class="column-cards" id="col-done"></div>
+  </div>
+</div>
+
+<script>
+const COLUMNS = ['backlog', 'in-progress', 'review', 'done'];
+let cardIndex = 0;
+
+function renderCard(issue) {
+  const isHitl = issue.type === 'HITL';
+  const isDone = issue.status === 'done';
+  const ac = issue.acceptanceCriteria;
+  const progress = ac.total > 0 ? (ac.done / ac.total) * 100 : 0;
+  const isComplete = ac.done === ac.total && ac.total > 0;
+
+  const typeClass = isHitl ? 'hitl' : 'afk';
+  const doneClass = isDone ? 'is-done' : '';
+  const badgeClass = isHitl ? 'badge-hitl' : 'badge-afk';
+  const fillClass = isComplete ? 'complete' : '';
+  const labelClass = isComplete ? 'complete' : '';
+  const delay = cardIndex++ * 50;
+
+  const blockedHtml = issue.blockedBy.length > 0 && !isDone
+    ? `<div class="card-blocked">${issue.blockedBy.map(b =>
+        `<span class="blocked-tag">${b}</span>`
+      ).join('')}</div>`
+    : '';
+
+  const inner = `
+    <div class="card-top">
+      <span class="card-id">${issue.id}</span>
+      <div class="card-badges">
+        <span class="badge ${badgeClass}">${issue.type}</span>
+        <span class="badge badge-phase">P${issue.phase}</span>
+      </div>
+    </div>
+    <div class="card-title">${issue.title}</div>
+    <div class="card-progress">
+      <div class="progress-track">
+        <div class="progress-fill ${fillClass}" style="width: ${progress}%"></div>
+      </div>
+      <span class="progress-label ${labelClass}">${ac.done}/${ac.total}</span>
+    </div>
+    ${blockedHtml}`;
+
+  if (isDone) {
+    return `<div class="card ${typeClass} ${doneClass}" style="animation-delay: ${delay}ms">
+      <div class="card-inner">${inner}</div>
+    </div>`;
+  }
+
+  return `<div class="card ${typeClass}" style="animation-delay: ${delay}ms">${inner}</div>`;
+}
+
+function groupByPhase(issues) {
+  const phases = {};
+  for (const issue of issues) {
+    (phases[issue.phase] ??= []).push(issue);
+  }
+  return Object.entries(phases).sort(([a], [b]) => a - b);
+}
+
+function renderColumn(colId, issues) {
+  const el = document.getElementById(`col-${colId}`);
+  const countEl = document.getElementById(`count-${colId}`);
+  countEl.textContent = issues.length;
+
+  if (issues.length === 0) {
+    el.innerHTML = `<div class="column-empty">No issues</div>`;
+    return;
+  }
+
+  const groups = groupByPhase(issues);
+  let html = '';
+  for (let i = 0; i < groups.length; i++) {
+    const [phase, items] = groups[i];
+    if (groups.length > 1) {
+      html += `<div class="phase-divider">
+        <span class="phase-divider-label">Phase ${phase}</span>
+        <div class="phase-divider-line"></div>
+      </div>`;
+    }
+    for (const issue of items) {
+      html += renderCard(issue);
+    }
+  }
+  el.innerHTML = html;
+}
+
+function renderSummary(issues) {
+  const total = issues.length;
+  const done = issues.filter(i => i.status === 'done').length;
+  const active = issues.filter(i => i.status === 'in-progress').length;
+  const inReview = issues.filter(i => i.status === 'review').length;
+  const hitl = issues.filter(i => i.type === 'HITL').length;
+  const afk = issues.filter(i => i.type === 'AFK').length;
+  const phases = [...new Set(issues.map(i => i.phase))].length;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+  const circumference = 2 * Math.PI * 18;
+  const offset = circumference - (pct / 100) * circumference;
+
+  document.getElementById('summary').innerHTML = `
+    <div class="progress-ring">
+      <svg width="48" height="48" viewBox="0 0 48 48">
+        <circle class="progress-ring-bg" cx="24" cy="24" r="18"/>
+        <circle class="progress-ring-fill" cx="24" cy="24" r="18"
+          stroke-dasharray="${circumference}"
+          stroke-dashoffset="${offset}"/>
+      </svg>
+      <div class="progress-ring-text">${pct}%</div>
+    </div>
+    <div class="summary-stats">
+      <span class="stat"><strong>${total}</strong> issues</span>
+      <span class="stat"><strong>${phases}</strong> phases</span>
+      <span class="stat afk"><strong>${afk}</strong> AFK</span>
+      <span class="stat hitl"><strong>${hitl}</strong> HITL</span>
+      <span class="stat done"><strong>${done}</strong> done</span>
+      <span class="stat active"><strong>${active}</strong> active</span>
+      ${inReview > 0 ? `<span class="stat"><strong>${inReview}</strong> in review</span>` : ''}
+    </div>`;
+
+  document.getElementById('header-meta').textContent =
+    `${total} issues across ${phases} phases — ${done}/${total} complete`;
+}
+
+async function loadBoard() {
+  try {
+    const res = await fetch('kanban-state.json?' + Date.now());
+    const data = await res.json();
+    const issues = data.issues;
+
+    cardIndex = 0;
+    renderSummary(issues);
+
+    for (const col of COLUMNS) {
+      renderColumn(col, issues.filter(i => i.status === col));
+    }
+
+    document.getElementById('refresh-time').textContent =
+      new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  } catch (err) {
+    document.getElementById('refresh-time').textContent = 'offline';
+    document.querySelector('.live-dot').style.background = 'var(--accent-red)';
+    console.error('Failed to load kanban-state.json:', err);
+  }
+}
+
+loadBoard();
+const refreshInterval = setInterval(loadBoard, 30000);
+
+document.getElementById('shutdown-btn').addEventListener('click', async () => {
+  clearInterval(refreshInterval);
+  try { await fetch('/api/shutdown'); } catch {}
+  document.body.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;
+      font-family:var(--font);color:var(--text-muted);flex-direction:column;gap:12px">
+      <svg width="32" height="32" viewBox="0 0 16 16" fill="none" style="opacity:0.3">
+        <path d="M8 1v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M4.5 3.5a6 6 0 1 0 7 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      <span style="font-size:14px">Board server stopped</span>
+      <span style="font-size:12px;opacity:0.5">You can close this tab</span>
+    </div>`;
+  window.close();
+});
+</script>
+</body>
+</html>

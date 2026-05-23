@@ -156,34 +156,40 @@ Also install the tool-neutral mirror at `agents/skills/` in the project repo —
 
 ### 5. Generate Kanban Board
 
-Generate `docs/kanban.html` — a self-contained HTML file that visualizes all issues as a kanban board.
+1. **Copy the template:** Copy `templates/kanban.html` from ai-os-v2 to `docs/kanban.html` in the project repo. Do not modify the HTML — it is a self-contained board that reads all data from `kanban-state.json` at runtime and auto-refreshes every 30 seconds.
 
-**Data source:** Read all issue files from `docs/issues/`. Parse each file's frontmatter/header for: title, phase, type (AFK/HITL), blocked-by, and acceptance criteria completion.
+2. **Generate `docs/kanban-state.json`:** Parse all issue files from `docs/issues/` and produce the JSON state file. The schema:
 
-**Board layout:**
-- Columns: **Backlog** → **In Progress** → **Review** → **Done**
-- All issues start in Backlog
-- Group by phase within each column
-- Color-code by type: AFK (blue/indigo), HITL (amber/orange), Phase 0 (slate/gray)
-- Show blocked-by relationships as a subtle indicator on each card
+```json
+{
+  "issues": [
+    {
+      "id": "01-01",
+      "title": "Issue Title",
+      "phase": 1,
+      "type": "AFK",
+      "blockedBy": ["01-00"],
+      "acceptanceCriteria": { "total": 3, "done": 0 },
+      "status": "backlog"
+    }
+  ],
+  "lastUpdated": "2026-01-01T00:00:00Z"
+}
+```
 
-**Card content:**
-- Issue ID (e.g., 01-02)
-- Title
-- Type badge (AFK / HITL)
-- Phase badge
-- Blocked-by list (if any)
-- Acceptance criteria count (e.g., "0/3 done")
-
-**Technical requirements:**
-- Single self-contained HTML file — Tailwind via CDN for styling
-- No JavaScript framework — vanilla JS only
-- Reads from a `kanban-state.json` file in the same directory for status tracking
-- On first generation, create `docs/kanban-state.json` from the issue list with all issues set to `backlog` (Phase 0 issues set to `done`)
-- The board auto-refreshes from `kanban-state.json` every 30 seconds (useful for watching live Sandcastle runs)
+**Status rules:**
+- All issues start as `backlog`
+- Phase 0 / infrastructure provisioning issues start as `done` (they are HITL prerequisites completed before agents run)
 - Valid statuses: `backlog`, `in-progress`, `review`, `done`
 
-**Style:** Clean, minimal. Match the editorial feel of the architecture review reports — generous whitespace, no heavy borders, monospace for issue IDs.
+**Parsing each issue file:**
+- `id` — from filename prefix (e.g., `01-02` from `01-02-tracer-bullet.md`)
+- `title` — from the `# Title` heading
+- `phase` — from the `**Phase:**` field
+- `type` — from the `**Type:**` field (`AFK` or `HITL`)
+- `blockedBy` — from the `**Blocked by:**` field, extract issue ID prefixes
+- `acceptanceCriteria.total` — count `- [ ]` and `- [x]` lines in the Acceptance Criteria section
+- `acceptanceCriteria.done` — count `- [x]` lines only
 
 ### 6. Initialize Git and Create GitHub Remote
 

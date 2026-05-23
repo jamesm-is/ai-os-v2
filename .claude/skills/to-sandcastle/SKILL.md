@@ -501,8 +501,56 @@ Generate the orchestration loop. Use the AGENTS config from the **Agent Profiles
 ```typescript
 import * as sandcastle from "@ai-hero/sandcastle";
 import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
+import { createServer } from "http";
+import { readFile } from "fs/promises";
+import { join, extname } from "path";
+import { exec } from "child_process";
 
 const MAX_ITERATIONS = 10;
+const BOARD_PORT = 4040;
+
+// === Kanban Board Server ===
+// Serves docs/ so the kanban board auto-refreshes during the run.
+const MIME: Record<string, string> = {
+  ".html": "text/html",
+  ".json": "application/json",
+  ".css": "text/css",
+  ".js": "application/javascript",
+};
+
+const docsDir = join(process.cwd(), "docs");
+const server = createServer(async (req, res) => {
+  if (req.url === "/api/shutdown") {
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.end("Board server stopped.");
+    server.close();
+    return;
+  }
+  if (req.url === "/open") {
+    res.writeHead(200, { "Content-Type": "text/html" });
+    res.end(`<script>window.open("/kanban.html");setTimeout(()=>window.close(),500);</script>`);
+    return;
+  }
+  const filePath = join(docsDir, req.url === "/" ? "kanban.html" : req.url!);
+  try {
+    const data = await readFile(filePath);
+    res.writeHead(200, {
+      "Content-Type": MIME[extname(filePath)] ?? "application/octet-stream",
+      "Cache-Control": "no-cache",
+    });
+    res.end(data);
+  } catch {
+    res.writeHead(404);
+    res.end("Not found");
+  }
+});
+
+server.listen(BOARD_PORT, () => {
+  const url = `http://localhost:${BOARD_PORT}`;
+  console.log(`\n  Kanban board: ${url}\n`);
+  const openCmd = process.platform === "win32" ? "start" : process.platform === "darwin" ? "open" : "xdg-open";
+  exec(`${openCmd} "${url}/open"`);
+});
 
 // === Agent Configuration ===
 // Swap models here to change which agent handles each role.
@@ -657,7 +705,8 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   console.log("\nPRs created.");
 }
 
-console.log("\nAll done.");
+console.log("\nAll done. Board still running at http://localhost:" + BOARD_PORT);
+console.log("Press the shutdown button in the board or close this process to stop.");
 ```
 
 **Template variable substitution:**
