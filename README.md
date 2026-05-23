@@ -1,6 +1,8 @@
 # ai-os-v2
 
-A project launcher for Claude Code. Takes a raw app idea, runs a structured alignment process, and produces a self-governing project repo with autonomous agent orchestration built in.
+A project launcher for AI coding agents. Takes a raw app idea, runs a structured alignment process, and produces a self-governing project repo with autonomous agent orchestration built in.
+
+Works with Claude Code, Codex, or any AI coding agent that can read markdown instructions. The pipeline is the same — only the interface differs (slash commands vs. reading skill files directly).
 
 This is not an app framework or a template generator. It's a thinking environment — a pipeline that forces you to resolve ambiguity, derive a tech stack from requirements, and decompose work into vertical slices before any code gets written.
 
@@ -14,15 +16,15 @@ Every project flows through the pipeline, run in order:
 
 | Step | Skill | What happens |
 |---|---|---|
-| 1 | `/align` | Grill you on the idea. Resolve domain terms, derive tech stack from constraints, lock decisions. |
-| 2 | `/to-prd` | Synthesize a PRD from alignment outputs. No re-interviewing — just synthesis. |
-| 3 | `/to-issues` | Decompose PRD into vertical slice issues with dependencies and phase labels. |
-| 4 | `/validate-slices` | Audit every issue for vertical slice quality. Catches horizontal decomposition, Phase 0 leakage, and missing acceptance criteria. |
-| 5 | `/handoff` | Create the project repo with all artifacts, install skills, and push to GitHub. |
+| 1 | align | Grill you on the idea. Resolve domain terms, derive tech stack from constraints, lock decisions. |
+| 2 | to-prd | Synthesize a PRD from alignment outputs. No re-interviewing — just synthesis. |
+| 3 | to-issues | Decompose PRD into vertical slice issues with dependencies and phase labels. |
+| 4 | validate-slices | Audit every issue for vertical slice quality. Catches horizontal decomposition, Phase 0 leakage, and missing acceptance criteria. |
+| 5 | handoff | Create the project repo with all artifacts, install skills, and push to GitHub. |
 
 After step 5, the project is fully self-governing. ai-os-v2's job is done.
 
-**Post-handoff (optional):** `/to-sandcastle` — generate agent orchestration scaffold (Dockerfile, prompts, orchestration loop) with subscription or API key auth.
+**Post-handoff (optional):** to-sandcastle — generate agent orchestration scaffold (Dockerfile, prompts, orchestration loop). You choose your CLI (Claude Code, Codex, or hybrid) and auth mode (subscription or API key).
 
 ## What you get at the end
 
@@ -32,19 +34,16 @@ A project repo in `~/ai-projects/<project-name>/` with:
 - **AGENTS.md** — project boot file for Codex / other agents
 - **CONTEXT.md** — domain glossary built during alignment (the source of truth for terminology)
 - **docs/prd.md** — full product requirements document
-- **docs/issues/** — vertical slice issue files (pushed to GitHub Issues via `/to-sandcastle`)
+- **docs/issues/** — vertical slice issue files (pushed to GitHub Issues via to-sandcastle)
 - **docs/slice-audit.md** — vertical slice audit report from validate-slices
 - **docs/kanban.html** — visual kanban board (open in browser, auto-refreshes every 30s)
 - **docs/kanban-state.json** — board state (updated by Sandcastle agents during autonomous runs)
 - **docs/adr/** — architectural decision records
-- **.claude/skills/** — full pipeline and utility skills (Claude Code slash commands):
-  - Pipeline: align, to-prd, to-issues, validate-slices, to-sandcastle (adapted for project-repo paths)
-  - Architecture: improve-codebase-architecture (codebase deepening and refactoring audits)
-  - Utility: relay (session context handoff)
-- **agents/skills/** — tool-neutral mirror of all skills (flat markdown, no frontmatter — for Codex / other agents)
-- **.sandcastle/** — autonomous agent orchestration (after `/to-sandcastle`):
+- **.claude/skills/** — pipeline and utility skills as Claude Code slash commands
+- **agents/skills/** — same skills as flat markdown (for Codex / other agents)
+- **.sandcastle/** — autonomous agent orchestration (after to-sandcastle):
   - `main.mts` — orchestration loop (plan → implement → review → PR)
-  - `Dockerfile` — containerized build environment with Claude Code + Codex CLI
+  - `Dockerfile` — containerized build environment (CLIs installed match your chosen configuration)
   - `plan-prompt.md` — dependency graph analysis and issue selection
   - `implement-prompt.md` — TDD coding with vertical slices
   - `review-prompt.md` — code quality and standards enforcement
@@ -53,24 +52,30 @@ A project repo in `~/ai-projects/<project-name>/` with:
 
 ### Self-governing projects
 
-Handoff installs the pipeline skills into the project repo, adapted for existing-codebase context. This means a live project can run the full planning loop — align, PRD, issues, validation — for new features without returning to ai-os-v2. The only skill that stays ai-os-v2-only is `/handoff` itself, since its job is creating new repos.
+Handoff installs the pipeline skills into the project repo, adapted for existing-codebase context. This means a live project can run the full planning loop — align, PRD, issues, validation — for new features without returning to ai-os-v2. The only skill that stays ai-os-v2-only is handoff itself, since its job is creating new repos.
 
 ### Agent configuration (Sandcastle)
 
-| Role | Model | Why |
-|---|---|---|
-| Planner | Claude Opus 4.7 | Judgment calls — dependency analysis, issue prioritization |
-| Implementer | GPT-5.5 (low effort) | Volume TDD coding work |
-| Reviewer | GPT-5.5 (high effort) | Deeper analysis — correctness, style, standards |
-| PR Creator | Claude Opus 4.7 | Judgment calls — PR quality, issue linking |
+During to-sandcastle, you pick a CLI configuration. Each determines which models fill each agent role:
 
-Issues are worked in parallel. Each gets its own Docker container and branch. The loop runs until all issues are resolved or the iteration cap is hit.
+| Role | Claude only | Codex only | Hybrid |
+|---|---|---|---|
+| Planner | Opus 4.7 | GPT-5.5 (high) | Opus 4.7 |
+| Implementer | Sonnet 4.6 | GPT-5.5 (low) | GPT-5.5 (low) |
+| Reviewer | Opus 4.6 | GPT-5.5 (medium) | GPT-5.5 (high) |
+| PR Creator | Opus 4.7 | GPT-5.5 (high) | Opus 4.7 |
+
+You also pick an auth mode:
+- **Subscription** — uses existing Claude / ChatGPT subscriptions (no API keys)
+- **API key** — pay-per-token from Anthropic / OpenAI credits
+
+The Dockerfile, `.env.example`, and `main.mts` are all generated to match your chosen CLI + auth combination. Issues are worked in parallel — each gets its own Docker container and branch. The loop runs until all issues are resolved or the iteration cap is hit.
 
 ## Prerequisites
 
 - An AI coding agent ([Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex](https://openai.com/index/codex/), or similar)
 - [GitHub CLI](https://cli.github.com/) (`gh`) installed and authenticated
-- For Sandcastle: `@ai-hero/sandcastle` (installed automatically during `/to-sandcastle`), plus either subscription tokens (Claude + ChatGPT) or API keys (Anthropic + OpenAI)
+- For Sandcastle: `@ai-hero/sandcastle` (installed automatically during to-sandcastle), plus credentials matching your chosen CLI + auth mode
 
 ## Getting started
 
@@ -111,6 +116,7 @@ Your agent reads `AGENTS.md` as its boot file (same content as `CLAUDE.md`, tool
 - **Vertical slices, not horizontal layers.** Issues cut through all layers end-to-end. Each is independently demoable. Validated before handoff.
 - **Alignment before implementation.** The grill forces you to resolve ambiguity upfront. Cheaper to change a decision in a doc than in code.
 - **Self-governing projects.** Once handed off, the project repo has everything it needs — spec, glossary, issues, skills, agent orchestration. It doesn't depend on ai-os-v2.
+- **AI-agnostic.** The pipeline works with any agent that can read markdown. Claude Code gets slash commands; everything else gets `agents/skills/`. Same pipeline, same outputs.
 
 ## Project structure
 
