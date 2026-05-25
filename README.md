@@ -66,14 +66,14 @@ The `relays/` directory is gitignored — relay files are local-only session art
 
 ### Agent configuration (Sandcastle)
 
-During to-sandcastle, you pick a CLI configuration. Each determines which models fill each agent role:
+During to-sandcastle, you pick a CLI configuration. Five options: Claude only, Codex only, Cursor only, Hybrid (Claude+Codex), or Hybrid (Claude+Cursor). Each determines which models fill each agent role:
 
-| Role | Claude only | Codex only | Hybrid |
-|---|---|---|---|
-| Planner | Opus 4.7 | GPT-5.5 (high) | Opus 4.7 |
-| Implementer | Sonnet 4.6 | GPT-5.5 (low) | GPT-5.5 (low) |
-| Reviewer | Opus 4.6 | GPT-5.5 (medium) | GPT-5.5 (high) |
-| PR Creator | Opus 4.7 | GPT-5.5 (high) | Opus 4.7 |
+| Role | Claude only | Codex only | Cursor only | Hybrid (Claude+Codex) | Hybrid (Claude+Cursor) |
+|---|---|---|---|---|---|
+| Planner | Opus 4.7 | GPT-5.5 (high) | Opus 4.7 (via Cursor) | Opus 4.7 | Opus 4.7 |
+| Implementer | Sonnet 4.6 | GPT-5.5 (low) | Composer 2.5 | GPT-5.5 (low) | Composer 2.5 |
+| Reviewer | Opus 4.6 | GPT-5.5 (medium) | GPT-5.5 (high via Cursor) | GPT-5.5 (high) | GPT-5.5 (high via Cursor) |
+| PR Creator | Opus 4.7 | GPT-5.5 (high) | Opus 4.7 (via Cursor) | Opus 4.7 | Opus 4.7 |
 
 You also pick an auth mode:
 - **Subscription** — uses existing Claude / ChatGPT subscriptions (no API keys)
