@@ -20,18 +20,20 @@ Generate the `.sandcastle/` orchestration scaffold in a project repo so it can r
    **CLI choice:**
    - **Claude only** — all agents run via Claude Code CLI
    - **Codex only** — all agents run via Codex CLI
-   - **Hybrid** — Claude Code for planning/PR, Codex for implementation/review
+   - **Cursor only** — all agents run via Cursor CLI (one CLI, one auth, one Docker image)
+   - **Hybrid (Claude + Codex)** — Claude Code for planning/PR, Codex for implementation/review
+   - **Hybrid (Claude + Cursor)** — Claude Code for planning/PR, Cursor for implementation/review
 
 ## Agent Profiles
 
 The CLI choice determines which models fill each role:
 
-| Role | Claude only | Codex only | Hybrid |
-|---|---|---|---|
-| Planner | Opus 4.7 | GPT-5.5 high | Opus 4.7 |
-| Implementer | Sonnet 4.6 | GPT-5.5 low | GPT-5.5 low |
-| Reviewer | Opus 4.6 | GPT-5.5 medium | GPT-5.5 high |
-| PR Creator | Opus 4.7 | GPT-5.5 high | Opus 4.7 |
+| Role | Claude only | Codex only | Cursor only | Hybrid (Claude+Codex) | Hybrid (Claude+Cursor) |
+|---|---|---|---|---|---|
+| Planner | Opus 4.7 | GPT-5.5 high | Opus 4.7 (via Cursor) | Opus 4.7 | Opus 4.7 |
+| Implementer | Sonnet 4.6 | GPT-5.5 low | Composer 2.5 | GPT-5.5 low | Composer 2.5 |
+| Reviewer | Opus 4.6 | GPT-5.5 medium | GPT-5.5 high (via Cursor) | GPT-5.5 high | GPT-5.5 high (via Cursor) |
+| PR Creator | Opus 4.7 | GPT-5.5 high | Opus 4.7 (via Cursor) | Opus 4.7 | Opus 4.7 |
 
 The corresponding `main.mts` agent calls:
 
@@ -55,7 +57,17 @@ const AGENTS = {
 };
 ```
 
-**Hybrid:**
+**Cursor only:**
+```typescript
+const AGENTS = {
+  planner:     cursorAgent("claude-opus-4-7-xhigh"),
+  implementer: cursorAgent("composer-2.5"),
+  reviewer:    cursorAgent("gpt-5.5-high"),
+  prCreator:   cursorAgent("claude-opus-4-7-xhigh"),
+};
+```
+
+**Hybrid (Claude + Codex):**
 ```typescript
 const AGENTS = {
   planner:     sandcastle.claudeCode("claude-opus-4-7"),
@@ -63,6 +75,80 @@ const AGENTS = {
   reviewer:    sandcastle.codex("gpt-5.5", { effort: "high" }),
   prCreator:   sandcastle.claudeCode("claude-opus-4-7"),
 };
+```
+
+**Hybrid (Claude + Cursor):**
+```typescript
+const AGENTS = {
+  planner:     sandcastle.claudeCode("claude-opus-4-7"),
+  implementer: cursorAgent("composer-2.5"),
+  reviewer:    cursorAgent("gpt-5.5-high"),
+  prCreator:   sandcastle.claudeCode("claude-opus-4-7"),
+};
+```
+
+### Cursor Agent Provider
+
+When Cursor is used (Cursor only, or Hybrid Claude+Cursor), add this provider function at the top of `main.mts`, before the `AGENTS` constant:
+
+```typescript
+import type { AgentProvider } from "@ai-hero/sandcastle";
+
+function cursorAgent(model: string): AgentProvider {
+  const shellEscape = (s: string) => "'" + s.replace(/'/g, "'\\''") + "'";
+
+  return {
+    name: "cursor",
+    env: {},
+    captureSessions: false,
+
+    buildPrintCommand({ prompt }) {
+      return {
+        command: `agent --print --force --trust --output-format stream-json --model ${shellEscape(model)}`,
+        stdin: prompt,
+      };
+    },
+
+    parseStreamLine(line: string) {
+      if (!line.startsWith("{")) return [];
+      try {
+        const obj = JSON.parse(line);
+
+        if (obj.type === "assistant" && Array.isArray(obj.message?.content)) {
+          const texts: string[] = [];
+          for (const block of obj.message.content) {
+            if (block.type === "text" && typeof block.text === "string") {
+              texts.push(block.text);
+            }
+          }
+          if (texts.length > 0) {
+            return [{ type: "text" as const, text: texts.join("") }];
+          }
+          return [];
+        }
+
+        if (obj.type === "tool_call" && obj.subtype === "started") {
+          const tc = obj.tool_call;
+          if (tc?.shellToolCall?.args?.command) {
+            return [{ type: "tool_call" as const, name: "Bash", args: tc.shellToolCall.args.command }];
+          }
+          return [];
+        }
+
+        if (obj.type === "result" && typeof obj.result === "string") {
+          return [{ type: "result" as const, result: obj.result }];
+        }
+
+        if (obj.type === "system" && obj.subtype === "init" && typeof obj.session_id === "string") {
+          return [{ type: "session_id" as const, sessionId: obj.session_id }];
+        }
+      } catch {
+        // Not valid JSON — skip
+      }
+      return [];
+    },
+  };
+}
 ```
 
 ## Auth Setup by Configuration
@@ -85,13 +171,28 @@ GH_TOKEN=                  # run: gh auth token
 ```
 Hook: `mkdir -p ~/.codex && cp /mnt/codex-auth.json ~/.codex/auth.json`
 
-**Hybrid:**
+**Cursor only:**
+```
+CURSOR_API_KEY=            # from: cursor.com/dashboard/integrations
+GH_TOKEN=                  # run: gh auth token
+```
+No special hook needed. Hook: just `{{INSTALL_CMD}}`.
+
+**Hybrid (Claude + Codex):**
 ```
 CLAUDE_CODE_OAUTH_TOKEN=   # run: claude setup-token
 GH_TOKEN=                  # run: gh auth token
 # Codex: mount ~/.codex/auth.json read-only — copied by onSandboxReady hook
 ```
 Hook: `mkdir -p ~/.codex && cp /mnt/codex-auth.json ~/.codex/auth.json`
+
+**Hybrid (Claude + Cursor):**
+```
+CLAUDE_CODE_OAUTH_TOKEN=   # run: claude setup-token
+CURSOR_API_KEY=            # from: cursor.com/dashboard/integrations
+GH_TOKEN=                  # run: gh auth token
+```
+No special hook needed beyond `{{INSTALL_CMD}}`.
 
 ### API key auth
 
@@ -109,13 +210,28 @@ GH_TOKEN=
 ```
 Hook: `printenv OPENAI_API_KEY | codex login --with-api-key`
 
-**Hybrid:**
+**Cursor only:**
+```
+CURSOR_API_KEY=
+GH_TOKEN=
+```
+No special hook needed. Hook: just `{{INSTALL_CMD}}`.
+
+**Hybrid (Claude + Codex):**
 ```
 ANTHROPIC_API_KEY=
 OPENAI_API_KEY=
 GH_TOKEN=
 ```
 Hook: `printenv OPENAI_API_KEY | codex login --with-api-key`
+
+**Hybrid (Claude + Cursor):**
+```
+ANTHROPIC_API_KEY=
+CURSOR_API_KEY=
+GH_TOKEN=
+```
+No special hook needed beyond `{{INSTALL_CMD}}`.
 
 ## Stack Detection
 
@@ -235,7 +351,41 @@ WORKDIR /home/agent
 ENTRYPOINT ["sleep", "infinity"]
 ```
 
-**Hybrid** — install both CLIs:
+**Cursor only** — install Cursor CLI only:
+
+```dockerfile
+FROM node:22-bookworm
+
+RUN apt-get update && apt-get install -y \
+  git \
+  curl \
+  jq \
+  && rm -rf /var/lib/apt/lists/*
+
+# GitHub CLI
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+  | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+  && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+  | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+  && apt-get update && apt-get install -y gh \
+  && rm -rf /var/lib/apt/lists/*
+
+ARG AGENT_UID=1000
+ARG AGENT_GID=1000
+
+RUN groupmod -g $AGENT_GID node && usermod -u $AGENT_UID -g $AGENT_GID -d /home/agent -m -l agent node
+USER ${AGENT_UID}:${AGENT_GID}
+
+# Cursor CLI (installs to user home)
+RUN curl https://cursor.com/install -fsS | bash
+ENV PATH="/home/agent/.local/bin:$PATH"
+
+WORKDIR /home/agent
+
+ENTRYPOINT ["sleep", "infinity"]
+```
+
+**Hybrid (Claude + Codex)** — install Claude Code + Codex CLIs:
 
 ```dockerfile
 FROM node:22-bookworm
@@ -272,6 +422,42 @@ WORKDIR /home/agent
 ENTRYPOINT ["sleep", "infinity"]
 ```
 
+**Hybrid (Claude + Cursor)** — install Claude Code + Cursor CLIs:
+
+```dockerfile
+FROM node:22-bookworm
+
+RUN apt-get update && apt-get install -y \
+  git \
+  curl \
+  jq \
+  && rm -rf /var/lib/apt/lists/*
+
+# GitHub CLI
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+  | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+  && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+  | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+  && apt-get update && apt-get install -y gh \
+  && rm -rf /var/lib/apt/lists/*
+
+ARG AGENT_UID=1000
+ARG AGENT_GID=1000
+
+RUN groupmod -g $AGENT_GID node && usermod -u $AGENT_UID -g $AGENT_GID -d /home/agent -m -l agent node
+USER ${AGENT_UID}:${AGENT_GID}
+
+# Claude Code CLI (installs to user home)
+RUN curl -fsSL https://claude.ai/install.sh | bash
+# Cursor CLI (installs to user home)
+RUN curl https://cursor.com/install -fsS | bash
+ENV PATH="/home/agent/.local/bin:$PATH"
+
+WORKDIR /home/agent
+
+ENTRYPOINT ["sleep", "infinity"]
+```
+
 For **Python** projects: Replace `node:22-bookworm` with `python:3.12-bookworm`. Adjust Codex install (pip or npm). Create the `agent` user from scratch instead of renaming the `node` user.
 
 </template>
@@ -279,6 +465,7 @@ For **Python** projects: Replace `node:22-bookworm` with `python:3.12-bookworm`.
 **Important:** The container must run as a non-root `agent` user:
 - Claude Code CLI blocks `--dangerously-skip-permissions` as root.
 - Codex CLI's app-server fails if `~/.codex/` is a bind-mounted directory — the `onSandboxReady` hook copies `auth.json` into an agent-owned directory instead.
+- Cursor CLI authenticates via `CURSOR_API_KEY` env var — no file mounts needed.
 
 #### `plan-prompt.md`
 
@@ -718,9 +905,9 @@ console.log("Press the shutdown button in the board or close this process to sto
 - `{{PLANNER_AGENT}}`, `{{IMPLEMENTER_AGENT}}`, `{{REVIEWER_AGENT}}`, `{{PR_CREATOR_AGENT}}` — from the Agent Profiles section matching the CLI choice.
 - `{{INSTALL_CMD}}` — detected package install command (e.g., `npm install`).
 - `{{CODEX_AUTH_HOOK_LINE}}` — based on config:
-  - **Claude only (any auth):** remove this line entirely (no Codex hook needed)
-  - **Codex/Hybrid + subscription:** `{ command: "mkdir -p ~/.codex && cp /mnt/codex-auth.json ~/.codex/auth.json" },`
-  - **Codex/Hybrid + API key:** `{ command: "printenv OPENAI_API_KEY | codex login --with-api-key" },`
+  - **Claude only / Cursor only / Hybrid (Claude+Cursor) (any auth):** remove this line entirely (no Codex hook needed)
+  - **Codex only / Hybrid (Claude+Codex) + subscription:** `{ command: "mkdir -p ~/.codex && cp /mnt/codex-auth.json ~/.codex/auth.json" },`
+  - **Codex only / Hybrid (Claude+Codex) + API key:** `{ command: "printenv OPENAI_API_KEY | codex login --with-api-key" },`
 
 ### 3. Wire Up Dependencies
 
@@ -781,7 +968,7 @@ Files:
 - .env.example        ({auth_description})
 - .gitignore          (excludes .env, logs/, worktrees/)
 
-CLI: {Claude only | Codex only | Hybrid}
+CLI: {Claude only | Codex only | Cursor only | Hybrid (Claude+Codex) | Hybrid (Claude+Cursor)}
 Auth: {Subscription | API key}
 
 Agent config:
@@ -816,7 +1003,7 @@ Setup:
 6. Run: npx sandcastle
 ```
 
-**Subscription + Hybrid:**
+**Subscription + Hybrid (Claude + Codex):**
 ```
 Setup:
 1. Complete all Phase 0 issues (provisioning, secrets, external setup)
@@ -826,6 +1013,27 @@ Setup:
 5. Run: gh auth token
 6. Copy .env.example to .env and paste CLAUDE_CODE_OAUTH_TOKEN + GH_TOKEN
 7. Run: npx sandcastle
+```
+
+**Any auth + Cursor only:**
+```
+Setup:
+1. Complete all Phase 0 issues (provisioning, secrets, external setup)
+2. Generate a Cursor API key from cursor.com/dashboard/integrations
+3. Run: gh auth token
+4. Copy .env.example to .env and fill in CURSOR_API_KEY + GH_TOKEN
+5. Run: npx sandcastle
+```
+
+**Subscription + Hybrid (Claude + Cursor):**
+```
+Setup:
+1. Complete all Phase 0 issues (provisioning, secrets, external setup)
+2. Run: claude setup-token
+3. Generate a Cursor API key from cursor.com/dashboard/integrations
+4. Run: gh auth token
+5. Copy .env.example to .env and paste CLAUDE_CODE_OAUTH_TOKEN + CURSOR_API_KEY + GH_TOKEN
+6. Run: npx sandcastle
 ```
 
 **API key + Claude only:**
@@ -848,7 +1056,7 @@ Setup:
 5. Run: npx sandcastle
 ```
 
-**API key + Hybrid:**
+**API key + Hybrid (Claude + Codex):**
 ```
 Setup:
 1. Complete all Phase 0 issues (provisioning, secrets, external setup)
@@ -856,6 +1064,17 @@ Setup:
 3. Get your OpenAI API key from platform.openai.com
 4. Run: gh auth token
 5. Copy .env.example to .env and fill in all three keys
+6. Run: npx sandcastle
+```
+
+**API key + Hybrid (Claude + Cursor):**
+```
+Setup:
+1. Complete all Phase 0 issues (provisioning, secrets, external setup)
+2. Get your Anthropic API key from console.anthropic.com
+3. Generate a Cursor API key from cursor.com/dashboard/integrations
+4. Run: gh auth token
+5. Copy .env.example to .env and fill in ANTHROPIC_API_KEY + CURSOR_API_KEY + GH_TOKEN
 6. Run: npx sandcastle
 ```
 
