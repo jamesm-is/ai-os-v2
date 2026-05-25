@@ -132,6 +132,18 @@ function cursorAgent(model: string): AgentProvider {
           if (tc?.shellToolCall?.args?.command) {
             return [{ type: "tool_call" as const, name: "Bash", args: tc.shellToolCall.args.command }];
           }
+          if (tc?.readToolCall?.args?.path) {
+            return [{ type: "tool_call" as const, name: "Read", args: tc.readToolCall.args.path }];
+          }
+          if (tc?.editToolCall?.args?.path) {
+            return [{ type: "tool_call" as const, name: "Edit", args: tc.editToolCall.args.path }];
+          }
+          if (tc?.globToolCall?.args?.globPattern) {
+            return [{ type: "tool_call" as const, name: "Glob", args: tc.globToolCall.args.globPattern }];
+          }
+          if (tc?.grepToolCall?.args?.pattern) {
+            return [{ type: "tool_call" as const, name: "Grep", args: tc.grepToolCall.args.pattern }];
+          }
           return [];
         }
 
