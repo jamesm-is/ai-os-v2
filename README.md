@@ -125,7 +125,7 @@ Your agent reads `AGENTS.md` as its boot file. Run each skill in order: `/align`
 
 ## Skills
 
-Eleven skills total, installed in both `.claude/skills/` and `.agents/skills/`:
+Ten skills total, installed in both `.claude/skills/` and `.agents/skills/`:
 
 | Skill | Category | Description |
 |---|---|---|

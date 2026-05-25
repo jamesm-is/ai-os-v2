@@ -21,6 +21,7 @@ projects/*/context.md
 projects/*/prd.md
 projects/*/issues/
 projects/*/status.md
+projects/*/slice-audit.md
 
 # Session logs
 logs/sessions/*.md
