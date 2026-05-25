@@ -185,10 +185,10 @@ Hook: `mkdir -p ~/.codex && cp /mnt/codex-auth.json ~/.codex/auth.json`
 
 **Cursor only:**
 ```
-CURSOR_API_KEY=            # from: cursor.com/dashboard/integrations
 GH_TOKEN=                  # run: gh auth token
+# Cursor: mount %APPDATA%\Cursor\auth.json read-only — copied by onSandboxReady hook
 ```
-No special hook needed. Hook: just `{{INSTALL_CMD}}`.
+Hook: `mkdir -p ~/.config/cursor && cp /mnt/cursor-auth.json ~/.config/cursor/auth.json`
 
 **Hybrid (Claude + Codex):**
 ```
@@ -201,10 +201,10 @@ Hook: `mkdir -p ~/.codex && cp /mnt/codex-auth.json ~/.codex/auth.json`
 **Hybrid (Claude + Cursor):**
 ```
 CLAUDE_CODE_OAUTH_TOKEN=   # run: claude setup-token
-CURSOR_API_KEY=            # from: cursor.com/dashboard/integrations
 GH_TOKEN=                  # run: gh auth token
+# Cursor: mount %APPDATA%\Cursor\auth.json read-only — copied by onSandboxReady hook
 ```
-No special hook needed beyond `{{INSTALL_CMD}}`.
+Hook: `mkdir -p ~/.config/cursor && cp /mnt/cursor-auth.json ~/.config/cursor/auth.json`
 
 ### API key auth
 
@@ -477,7 +477,8 @@ For **Python** projects: Replace `node:22-bookworm` with `python:3.12-bookworm`.
 **Important:** The container must run as a non-root `agent` user:
 - Claude Code CLI blocks `--dangerously-skip-permissions` as root.
 - Codex CLI's app-server fails if `~/.codex/` is a bind-mounted directory — the `onSandboxReady` hook copies `auth.json` into an agent-owned directory instead.
-- Cursor CLI authenticates via `CURSOR_API_KEY` env var — no file mounts needed.
+- Cursor CLI subscription auth: mount `cursor-auth.json` read-only to `/mnt/cursor-auth.json`, copy to `~/.config/cursor/auth.json` via hook (same pattern as Codex). Source file: `%APPDATA%\Cursor\auth.json` on Windows.
+- Cursor CLI API key auth: `CURSOR_API_KEY` env var — no file mounts needed.
 
 #### `plan-prompt.md`
 
@@ -917,9 +918,11 @@ console.log("Press the shutdown button in the board or close this process to sto
 - `{{PLANNER_AGENT}}`, `{{IMPLEMENTER_AGENT}}`, `{{REVIEWER_AGENT}}`, `{{PR_CREATOR_AGENT}}` — from the Agent Profiles section matching the CLI choice.
 - `{{INSTALL_CMD}}` — detected package install command (e.g., `npm install`).
 - `{{CODEX_AUTH_HOOK_LINE}}` — based on config:
-  - **Claude only / Cursor only / Hybrid (Claude+Cursor) (any auth):** remove this line entirely (no Codex hook needed)
+  - **Claude only (any auth):** remove this line entirely
   - **Codex only / Hybrid (Claude+Codex) + subscription:** `{ command: "mkdir -p ~/.codex && cp /mnt/codex-auth.json ~/.codex/auth.json" },`
   - **Codex only / Hybrid (Claude+Codex) + API key:** `{ command: "printenv OPENAI_API_KEY | codex login --with-api-key" },`
+  - **Cursor only / Hybrid (Claude+Cursor) + subscription:** `{ command: "mkdir -p ~/.config/cursor && cp /mnt/cursor-auth.json ~/.config/cursor/auth.json" },`
+  - **Cursor only / Hybrid (Claude+Cursor) + API key:** remove this line entirely (CURSOR_API_KEY env var is sufficient)
 
 ### 3. Wire Up Dependencies
 
@@ -1027,14 +1030,15 @@ Setup:
 7. Run: npx sandcastle
 ```
 
-**Any auth + Cursor only:**
+**Subscription + Cursor only:**
 ```
 Setup:
 1. Complete all Phase 0 issues (provisioning, secrets, external setup)
-2. Generate a Cursor API key from cursor.com/dashboard/integrations
-3. Run: gh auth token
-4. Copy .env.example to .env and fill in CURSOR_API_KEY + GH_TOKEN
-5. Run: npx sandcastle
+2. Run: agent login (if not already logged in with Cursor Pro subscription)
+3. Copy %APPDATA%\Cursor\auth.json to .sandcastle/cursor-auth.json
+4. Run: gh auth token
+5. Copy .env.example to .env and paste the GH_TOKEN
+6. Run: npx sandcastle
 ```
 
 **Subscription + Hybrid (Claude + Cursor):**
@@ -1042,10 +1046,11 @@ Setup:
 Setup:
 1. Complete all Phase 0 issues (provisioning, secrets, external setup)
 2. Run: claude setup-token
-3. Generate a Cursor API key from cursor.com/dashboard/integrations
-4. Run: gh auth token
-5. Copy .env.example to .env and paste CLAUDE_CODE_OAUTH_TOKEN + CURSOR_API_KEY + GH_TOKEN
-6. Run: npx sandcastle
+3. Run: agent login (if not already logged in with Cursor Pro subscription)
+4. Copy %APPDATA%\Cursor\auth.json to .sandcastle/cursor-auth.json
+5. Run: gh auth token
+6. Copy .env.example to .env and paste CLAUDE_CODE_OAUTH_TOKEN + GH_TOKEN
+7. Run: npx sandcastle
 ```
 
 **API key + Claude only:**
@@ -1077,6 +1082,16 @@ Setup:
 4. Run: gh auth token
 5. Copy .env.example to .env and fill in all three keys
 6. Run: npx sandcastle
+```
+
+**API key + Cursor only:**
+```
+Setup:
+1. Complete all Phase 0 issues (provisioning, secrets, external setup)
+2. Generate a Cursor API key from cursor.com/dashboard/integrations
+3. Run: gh auth token
+4. Copy .env.example to .env and fill in CURSOR_API_KEY + GH_TOKEN
+5. Run: npx sandcastle
 ```
 
 **API key + Hybrid (Claude + Cursor):**
