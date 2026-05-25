@@ -42,7 +42,9 @@ Create `~/ai-projects/<project-name>/` with this structure:
 │   │   └── (vertical slice issue files)
 │   └── adr/
 │       └── (any ADRs from alignment)
+├── .gitignore
 ├── .claude/
+│   ├── relays/              (local-only relay handoff files)
 │   └── skills/
 │       └── (pipeline, architecture, and utility skills)
 ├── agents/
@@ -232,7 +234,32 @@ Also install the tool-neutral mirror at `agents/skills/` in the project repo —
 - `acceptanceCriteria.total` — count `- [ ]` and `- [x]` lines in the Acceptance Criteria section
 - `acceptanceCriteria.done` — count `- [x]` lines only
 
-### 6. Initialize Git and Create GitHub Remote
+### 6. Create Relay Directory and .gitignore
+
+Create `.claude/relays/` in the project repo so `/relay` works immediately.
+
+Create a root `.gitignore` with standard exclusions:
+
+```
+*.env
+*.key
+.DS_Store
+Thumbs.db
+node_modules/
+__pycache__/
+*.pyc
+
+# Local settings with secrets/tokens
+.claude/settings.local.json
+
+# Relay handoff files (local-only)
+.claude/relays/
+
+# Session logs
+logs/sessions/*.md
+```
+
+### 7. Initialize Git and Create GitHub Remote
 
 Run:
 ```
@@ -249,12 +276,12 @@ gh repo create <github-user>/<project-name> --private --source . --push
 
 Use `--private` by default. If the user specifies public, use `--public` instead.
 
-### 7. Update ai-os-v2
+### 8. Update ai-os-v2
 
 - Update `projects/<project-name>/status.md` to `stage: handed-off-to-github` with the project path and GitHub URL.
 - The PRD copy stays in ai-os-v2 as a birth certificate.
 
-### 8. Print Summary
+### 9. Print Summary
 
 ```
 Project created: ~/ai-projects/<project-name>/
