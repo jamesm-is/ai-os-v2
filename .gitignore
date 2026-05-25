@@ -9,6 +9,9 @@ node_modules/
 # Local settings with secrets/tokens
 .claude/settings.local.json
 
+# Relay handoff files (local-only)
+.claude/relays/
+
 # Personal profile (use about.example.md as template)
 context/about.md
 

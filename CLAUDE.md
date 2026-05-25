@@ -46,7 +46,7 @@ projects/<project-name>/
 - No default tech stack. Every project earns its stack from its requirements.
 - CONTEXT.md entries are added only when the grill resolves genuine ambiguity — never speculatively.
 - The PRD copy in ai-os-v2 is archival. The project repo owns the living version after handoff.
-- Skills live in `.claude/skills/`. Nine skills total: pipeline (align, to-prd, to-issues, validate-slices, handoff), post-handoff (to-sandcastle), architecture (improve-codebase-architecture), utility (relay, preflight).
+- Skills live in `.claude/skills/`. Ten skills total: pipeline (align, to-prd, to-issues, validate-slices, handoff), post-handoff (to-sandcastle), architecture (improve-codebase-architecture), utility (relay, relay-handoff, preflight).
 
 ## Session Logging
 
@@ -54,7 +54,7 @@ Before ending every conversation, append a session entry to `logs/sessions/YYYY-
 
 ## Post-Handoff
 
-Once a project is handed off, it is **fully self-governing**. Handoff installs the pipeline skills (align, to-prd, to-issues, validate-slices, to-sandcastle) adapted for project-repo paths, plus architecture skills (improve-codebase-architecture) and utility skills (relay). It also generates a kanban board (`docs/kanban.html` + `docs/kanban-state.json`) for visual issue tracking, and a tool-neutral skill mirror at `agents/skills/` with an `AGENTS.md` boot file for Codex/other agents. This means:
+Once a project is handed off, it is **fully self-governing**. Handoff installs the pipeline skills (align, to-prd, to-issues, validate-slices, to-sandcastle) adapted for project-repo paths, plus architecture skills (improve-codebase-architecture) and utility skills (relay, relay-handoff). It also generates a kanban board (`docs/kanban.html` + `docs/kanban-state.json`) for visual issue tracking, and a tool-neutral skill mirror at `agents/skills/` with an `AGENTS.md` boot file for Codex/other agents. This means:
 
 - All feature work — minor or major — happens in the project repo using its own pipeline skills
 - No need to return to ai-os-v2 for new features, refactors, or even major pivots

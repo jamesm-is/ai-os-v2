@@ -1,9 +1,24 @@
-Write a handoff document summarising the current conversation so a fresh agent can continue the work. Save to the temporary directory of the user's OS - not the current workspace.
+# Relay
 
-Include a "suggested skills" section in the document, which suggests skills that the agent should invoke.
+Compact the current conversation into a relay document for another agent to pick up.
 
-Do not duplicate content already captured in other artifacts (PRDs, plans, ADRs, issues, commits, diffs). Reference them by path or URL instead.
+## Where to save
 
-Redact any sensitive information, such as API keys, passwords, or personally identifiable information.
+Save to `.claude/relays/` in the current repo. Create the directory if it doesn't exist.
 
-If the user passed arguments, treat them as a description of what the next session will focus on and tailor the doc accordingly.
+Filename format: `YYYY-MM-DD-HH-MM--<slug>.md` where `<slug>` is a short kebab-case summary of the relay topic (3-5 words max). Use the current local time.
+
+Example: `.claude/relays/2026-05-24-14-30--cursor-cli-sub-auth.md`
+
+## What to include
+
+- **Date**, **source workspace path**, and **next session focus** at the top
+- Context the next agent needs to continue — decisions made, approaches tried, current state
+- A "suggested skills" section recommending skills the next agent should invoke
+- References to artifacts by path or URL — do not duplicate content already in PRDs, plans, ADRs, issues, commits, or diffs
+
+## Rules
+
+- Redact any sensitive information (API keys, passwords, PII)
+- If given a focus description, tailor the document for what the next session will work on
+- After saving, tell the user: "Relay saved. Run `relay-handoff` in your next session to pick it up."
