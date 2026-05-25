@@ -8,11 +8,11 @@ Write a handoff document summarising the current conversation so a fresh agent c
 
 ## Where to save
 
-Save to `.claude/relays/` in the current repo. Create the directory if it doesn't exist.
+Save to `relays/` in the current repo. Create the directory if it doesn't exist.
 
 Filename format: `YYYY-MM-DD-HH-MM--<slug>.md` where `<slug>` is a short kebab-case summary of the relay topic (3-5 words max). Use the current local time.
 
-Example: `.claude/relays/2026-05-24-14-30--cursor-cli-sub-auth.md`
+Example: `relays/2026-05-24-14-30--cursor-cli-sub-auth.md`
 
 ## What to include
 

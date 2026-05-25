@@ -43,13 +43,13 @@ Create `~/ai-projects/<project-name>/` with this structure:
 │   └── adr/
 │       └── (any ADRs from alignment)
 ├── .gitignore
+├── relays/               (shared relay handoff files — agent-neutral)
 ├── .claude/
-│   ├── relays/              (local-only relay handoff files)
 │   └── skills/
-│       └── (pipeline, architecture, and utility skills)
-├── agents/
+│       └── (Claude Code slash commands)
+├── .agents/
 │   └── skills/
-│       └── (tool-neutral mirror — flat markdown, no frontmatter)
+│       └── (Codex app skills — YAML frontmatter + SKILL.md)
 ```
 
 ### 2. Generate CLAUDE.md
@@ -104,7 +104,13 @@ Adapt this template to the specific project. Add project-specific rules if the P
 
 ### 4. Install Skills
 
-Install pipeline and utility skills into `.claude/skills/` in the project repo. These make the project self-governing — it can run the full planning loop for new features without returning to ai-os-v2.
+Install skills for both Claude Code and Codex into the project repo. These make the project self-governing — it can run the full planning loop for new features without returning to ai-os-v2.
+
+**Claude Code skills** go in `.claude/skills/<name>/SKILL.md` with YAML frontmatter (name, description).
+
+**Codex skills** go in `.agents/skills/<name>/SKILL.md` with identical YAML frontmatter (name, description).
+
+Both sets contain the same content — the only difference is the directory prefix. Install every skill into both locations.
 
 **Pipeline skills** (adapt paths for project-repo context):
 
@@ -116,70 +122,12 @@ Install pipeline and utility skills into `.claude/skills/` in the project repo. 
 
 **Architecture skills:**
 
-- **improve-codebase-architecture** — copy the full skill directory (SKILL.md, LANGUAGE.md, DEEPENING.md, HTML-REPORT.md, INTERFACE-DESIGN.md) verbatim from ai-os-v2's `.claude/skills/improve-codebase-architecture/`. No path adaptation needed — it already reads CONTEXT.md at repo root and `docs/adr/`.
+- **improve-codebase-architecture** — copy the full skill directory (SKILL.md, LANGUAGE.md, DEEPENING.md, HTML-REPORT.md, INTERFACE-DESIGN.md) verbatim from ai-os-v2 into both `.claude/skills/improve-codebase-architecture/` and `.agents/skills/improve-codebase-architecture/`. No path adaptation needed — it already reads CONTEXT.md at repo root and `docs/adr/`.
 
 **Utility skills:**
 
-- **relay** — compact the current conversation into a relay document for session handoff. Saves to `.claude/relays/` in the project repo. Install verbatim:
-
-```markdown
----
-name: relay
-description: Compact the current conversation into a relay document for another agent to pick up.
-argument-hint: "What will the next session be used for?"
----
-
-Write a handoff document summarising the current conversation so a fresh agent can continue the work.
-
-## Where to save
-
-Save to `.claude/relays/` in the current repo. Create the directory if it doesn't exist.
-
-Filename format: `YYYY-MM-DD-HH-MM--<slug>.md` where `<slug>` is a short kebab-case summary of the relay topic (3-5 words max). Use the current local time.
-
-Example: `.claude/relays/2026-05-24-14-30--cursor-cli-sub-auth.md`
-
-## What to include
-
-- **Date**, **source workspace path**, and **next session focus** at the top
-- Context the next agent needs to continue — decisions made, approaches tried, current state
-- A "suggested skills" section recommending skills the next agent should invoke
-- References to artifacts by path or URL — do not duplicate content already in PRDs, plans, ADRs, issues, commits, or diffs
-
-## Rules
-
-- Redact any sensitive information (API keys, passwords, PII)
-- If the user passed arguments, treat them as a description of what the next session will focus on and tailor the doc accordingly
-- After saving, tell the user: "Relay saved. Run `/relay-handoff` in your next session to pick it up."
-```
-
-- **relay-handoff** — pick up a relay from a previous session. Lists available relays from `.claude/relays/` and lets the user choose which one to resume. Install verbatim:
-
-```markdown
----
-name: relay-handoff
-description: Pick up a relay from a previous session. Lists available relays and lets you choose which one to resume.
----
-
-## Behavior
-
-1. Check if `--all` was passed as an argument.
-   - **Without `--all`:** List all `.md` files in `.claude/relays/` that do NOT start with `DONE-`.
-   - **With `--all`:** List ALL `.md` files in `.claude/relays/`, including `DONE-` files. Show `DONE-` files with a `[DONE]` tag in the label so they're visually distinct.
-2. If none exist, tell the user "No relays available." and stop.
-3. If exactly one exists, read it and proceed directly — no need to ask.
-4. If multiple exist, present them as choices using AskUserQuestion. Show each relay's date and topic slug as the label, and the "next session focus" line as the description.
-5. Read the selected relay file fully.
-6. If the selected relay is NOT already `DONE-`, rename it by prepending `DONE-` to the filename (e.g., `2026-05-24-14-30--cursor-cli-sub-auth.md` → `DONE-2026-05-24-14-30--cursor-cli-sub-auth.md`). If it's already `DONE-`, skip the rename — it's a reference lookup, not a pickup.
-7. Print a summary of what the relay contains and what the next steps are.
-8. If the relay has a "suggested skills" section, invoke those skills as appropriate.
-
-## Rules
-
-- Never delete relay files — only mark them done with the `DONE-` prefix.
-- If the user passes an argument (other than `--all`), use it to filter relays by keyword match on filename or content. `--all` can be combined with a keyword filter.
-- Treat the relay document as context for the current session, not as instructions to execute blindly — confirm the plan with the user before taking action.
-```
+- **relay** — compact the current conversation into a relay document for session handoff. Saves to `relays/` at repo root (agent-neutral location). Install in both `.claude/skills/relay/SKILL.md` and `.agents/skills/relay/SKILL.md`.
+- **relay-handoff** — pick up a relay from a previous session. Reads from `relays/` at repo root. Install in both `.claude/skills/relay-handoff/SKILL.md` and `.agents/skills/relay-handoff/SKILL.md`.
 
 **Adaptation rules for pipeline skills:**
 
@@ -195,7 +143,7 @@ When generating each skill for the project repo, apply these path translations:
 
 Each skill's description should note it works in "existing codebase" mode. The skill body should reference existing project files (CONTEXT.md, CLAUDE.md, codebase) as context for grilling and planning.
 
-Also install the tool-neutral mirror at `agents/skills/` in the project repo — same content as `.claude/skills/` but as flat markdown files without YAML frontmatter. This lets Codex and other agents use the same pipeline. Generate an `AGENTS.md` boot file alongside `CLAUDE.md` using tool-neutral language (no slash commands — reference `agents/skills/<name>.md` paths instead).
+Also generate an `AGENTS.md` boot file alongside `CLAUDE.md`. It should reference `.agents/skills/<name>/SKILL.md` paths (not slash commands).
 
 ### 5. Generate Kanban Board
 
@@ -236,7 +184,7 @@ Also install the tool-neutral mirror at `agents/skills/` in the project repo —
 
 ### 6. Create Relay Directory and .gitignore
 
-Create `.claude/relays/` in the project repo so `/relay` works immediately.
+Create `relays/` at repo root so `/relay` works immediately for both Claude and Codex.
 
 Create a root `.gitignore` with standard exclusions:
 
@@ -253,7 +201,7 @@ __pycache__/
 .claude/settings.local.json
 
 # Relay handoff files (local-only)
-.claude/relays/
+relays/
 
 # Session logs
 logs/sessions/*.md
@@ -297,7 +245,8 @@ Contents:
 - docs/kanban.html (visual board — open in browser)
 - docs/kanban-state.json (board state — auto-refreshes every 30s)
 - .claude/skills/ (Claude Code slash commands)
-- agents/skills/ (tool-neutral mirror for Codex / other agents)
+- .agents/skills/ (Codex app skills)
+- relays/ (shared relay directory)
 
 This project is self-governing. New features can be planned and built entirely in-repo
 using the installed pipeline skills — no need to return to ai-os-v2.

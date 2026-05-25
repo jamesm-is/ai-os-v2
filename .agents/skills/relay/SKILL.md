@@ -1,14 +1,20 @@
+---
+name: relay
+description: Compact the current conversation into a relay document for another agent to pick up.
+argument-hint: "What will the next session be used for?"
+---
+
 # Relay
 
-Compact the current conversation into a relay document for another agent to pick up.
+Write a handoff document summarising the current conversation so a fresh agent can continue the work.
 
 ## Where to save
 
-Save to `.claude/relays/` in the current repo. Create the directory if it doesn't exist.
+Save to `relays/` at repo root. Create the directory if it doesn't exist.
 
 Filename format: `YYYY-MM-DD-HH-MM--<slug>.md` where `<slug>` is a short kebab-case summary of the relay topic (3-5 words max). Use the current local time.
 
-Example: `.claude/relays/2026-05-24-14-30--cursor-cli-sub-auth.md`
+Example: `relays/2026-05-24-14-30--cursor-cli-sub-auth.md`
 
 ## What to include
 
@@ -21,4 +27,4 @@ Example: `.claude/relays/2026-05-24-14-30--cursor-cli-sub-auth.md`
 
 - Redact any sensitive information (API keys, passwords, PII)
 - If given a focus description, tailor the document for what the next session will work on
-- After saving, tell the user: "Relay saved. Run `relay-handoff` in your next session to pick it up."
+- After saving, tell the user: "Relay saved. Run `/relay-handoff` in your next session to pick it up."

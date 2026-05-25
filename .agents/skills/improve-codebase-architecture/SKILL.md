@@ -1,3 +1,8 @@
+---
+name: improve-codebase-architecture
+description: Surface architectural friction and propose deepening opportunities — refactors that turn shallow modules into deep ones for testability and AI-navigability.
+---
+
 # Improve Codebase Architecture
 
 Surface architectural friction and propose **deepening opportunities** — refactors that turn shallow modules into deep ones. The aim is testability and AI-navigability.

@@ -1,3 +1,8 @@
+---
+name: to-issues
+description: Decompose the PRD into vertical slice issues with dependencies. Each issue is a thin tracer bullet through all layers.
+---
+
 # To Issues
 
 Break the PRD into independently-grabbable issues using vertical slices (tracer bullets). Issues are written as local markdown files in ai-os-v2 — they get pushed to GitHub Issues later during the to-sandcastle step.
@@ -94,4 +99,4 @@ What should be tested for this slice. Behavior-focused, not implementation-focus
 
 1. Update `projects/<project-name>/status.md` to `stage: issues-ready`.
 2. Print a summary: total slices, phases, HITL count, AFK count, tracer bullet identified.
-3. Tell the user to run the validate-slices step next (see `agents/skills/validate-slices.md`), then handoff (see `agents/skills/handoff.md`).
+3. Tell the user to run `/validate-slices` next, then `/handoff`.

@@ -1,3 +1,8 @@
+---
+name: to-prd
+description: Synthesize a PRD from alignment outputs. Do not re-interview — just synthesize what was already resolved.
+---
+
 # To PRD
 
 Take the alignment outputs and synthesize a PRD. Do NOT interview the user — just synthesize what was already resolved during alignment.
@@ -20,7 +25,7 @@ Take the alignment outputs and synthesize a PRD. Do NOT interview the user — j
 
 5. **Update** `projects/<project-name>/status.md` to `stage: prd-ready`.
 
-6. Tell the user to run the to-issues step next (see `agents/skills/to-issues.md`).
+6. Tell the user to run `/to-issues` next.
 
 ## PRD Template
 

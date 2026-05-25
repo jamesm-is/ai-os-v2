@@ -1,3 +1,7 @@
+---
+name: handoff
+description: Package alignment artifacts, install pipeline skills, and create a project repo with GitHub remote in ai-projects/. Use after /validate-slices.
+---
 
 # Handoff
 
@@ -29,6 +33,7 @@ Create `~/ai-projects/<project-name>/` with this structure:
 ├── CLAUDE.md
 ├── AGENTS.md
 ├── CONTEXT.md
+├── relays/               (shared relay handoff files)
 ├── docs/
 │   ├── prd.md
 │   ├── slice-audit.md
@@ -38,12 +43,13 @@ Create `~/ai-projects/<project-name>/` with this structure:
 │   │   └── (vertical slice issue files)
 │   └── adr/
 │       └── (any ADRs from alignment)
+├── .gitignore
 ├── .claude/
 │   └── skills/
-│       └── (pipeline, architecture, and utility skills)
-├── agents/
+│       └── (Claude Code slash commands)
+├── .agents/
 │   └── skills/
-│       └── (tool-neutral mirror — flat markdown, no frontmatter)
+│       └── (Codex app skills — YAML frontmatter + SKILL.md)
 ```
 
 ### 2. Generate CLAUDE.md
@@ -98,7 +104,13 @@ Adapt this template to the specific project. Add project-specific rules if the P
 
 ### 4. Install Skills
 
-Install pipeline and utility skills into `.claude/skills/` in the project repo. These make the project self-governing — it can run the full planning loop for new features without returning to ai-os-v2.
+Install skills for both Claude Code and Codex into the project repo.
+
+**Claude Code skills** go in `.claude/skills/<name>/SKILL.md` with YAML frontmatter (name, description). These are Claude Code slash commands.
+
+**Codex skills** go in `.agents/skills/<name>/SKILL.md` with identical YAML frontmatter (name, description). These are Codex app skills.
+
+Both sets contain the same content — the only difference is the directory prefix (`.claude/skills/` vs `.agents/skills/`).
 
 **Pipeline skills** (adapt paths for project-repo context):
 
@@ -110,29 +122,12 @@ Install pipeline and utility skills into `.claude/skills/` in the project repo. 
 
 **Architecture skills:**
 
-- **improve-codebase-architecture** — copy the full skill directory (SKILL.md, LANGUAGE.md, DEEPENING.md, HTML-REPORT.md, INTERFACE-DESIGN.md) verbatim from ai-os-v2's `.claude/skills/improve-codebase-architecture/`. No path adaptation needed — it already reads CONTEXT.md at repo root and `docs/adr/`.
+- **improve-codebase-architecture** — copy the full skill directory (SKILL.md, LANGUAGE.md, DEEPENING.md, HTML-REPORT.md, INTERFACE-DESIGN.md) verbatim from ai-os-v2 into both `.claude/skills/improve-codebase-architecture/` and `.agents/skills/improve-codebase-architecture/`. No path adaptation needed — it already reads CONTEXT.md at repo root and `docs/adr/`.
 
 **Utility skills:**
 
-- **relay** — compact the current conversation into a relay document for session handoff. Install verbatim:
-
-```markdown
----
-name: relay
-description: Compact the current conversation into a relay document for another agent to pick up.
-argument-hint: "What will the next session be used for?"
----
-
-Write a handoff document summarising the current conversation so a fresh agent can continue the work. Save to the temporary directory of the user's OS - not the current workspace.
-
-Include a "suggested skills" section in the document, which suggests skills that the agent should invoke.
-
-Do not duplicate content already captured in other artifacts (PRDs, plans, ADRs, issues, commits, diffs). Reference them by path or URL instead.
-
-Redact any sensitive information, such as API keys, passwords, or personally identifiable information.
-
-If the user passed arguments, treat them as a description of what the next session will focus on and tailor the doc accordingly.
-```
+- **relay** — compact the current conversation into a relay document for session handoff. Saves to `relays/` at repo root (agent-neutral location). Install in both `.claude/skills/relay/SKILL.md` and `.agents/skills/relay/SKILL.md`.
+- **relay-handoff** — pick up a relay from a previous session. Reads from `relays/` at repo root. Install in both `.claude/skills/relay-handoff/SKILL.md` and `.agents/skills/relay-handoff/SKILL.md`.
 
 **Adaptation rules for pipeline skills:**
 
@@ -148,7 +143,7 @@ When generating each skill for the project repo, apply these path translations:
 
 Each skill's description should note it works in "existing codebase" mode. The skill body should reference existing project files (CONTEXT.md, CLAUDE.md, codebase) as context for grilling and planning.
 
-Also install the tool-neutral mirror at `agents/skills/` in the project repo — same content as `.claude/skills/` but as flat markdown files without YAML frontmatter. This lets Codex and other agents use the same pipeline. Generate an `AGENTS.md` boot file alongside `CLAUDE.md` using tool-neutral language (no slash commands — reference `agents/skills/<name>.md` paths instead).
+Also generate an `AGENTS.md` boot file alongside `CLAUDE.md` using tool-neutral language (no slash commands — reference `.agents/skills/<name>/SKILL.md` paths instead).
 
 ### 5. Generate Kanban Board
 
@@ -187,7 +182,32 @@ Also install the tool-neutral mirror at `agents/skills/` in the project repo —
 - `acceptanceCriteria.total` — count `- [ ]` and `- [x]` lines in the Acceptance Criteria section
 - `acceptanceCriteria.done` — count `- [x]` lines only
 
-### 6. Initialize Git and Create GitHub Remote
+### 6. Create Relay Directory and .gitignore
+
+Create `relays/` at repo root so `/relay` works immediately.
+
+Create a root `.gitignore`:
+
+```
+*.env
+*.key
+.DS_Store
+Thumbs.db
+node_modules/
+__pycache__/
+*.pyc
+
+# Local settings with secrets/tokens
+.claude/settings.local.json
+
+# Relay handoff files (local-only)
+relays/
+
+# Session logs
+logs/sessions/*.md
+```
+
+### 7. Initialize Git and Create GitHub Remote
 
 Run:
 ```
@@ -204,12 +224,12 @@ gh repo create <github-user>/<project-name> --private --source . --push
 
 Use `--private` by default. If the user specifies public, use `--public` instead.
 
-### 7. Update ai-os-v2
+### 8. Update ai-os-v2
 
 - Update `projects/<project-name>/status.md` to `stage: handed-off-to-github` with the project path and GitHub URL.
 - The PRD copy stays in ai-os-v2 as a birth certificate.
 
-### 8. Print Summary
+### 9. Print Summary
 
 ```
 Project created: ~/ai-projects/<project-name>/
@@ -225,18 +245,19 @@ Contents:
 - docs/kanban.html (visual board — open in browser)
 - docs/kanban-state.json (board state — auto-refreshes every 30s)
 - .claude/skills/ (Claude Code slash commands)
-- agents/skills/ (tool-neutral mirror for Codex / other agents)
+- .agents/skills/ (Codex app skills)
+- relays/ (shared relay directory)
 
 This project is self-governing. New features can be planned and built entirely in-repo
 using the installed pipeline skills — no need to return to ai-os-v2.
 
-Next: Run the to-sandcastle step to generate the agent orchestration scaffold (if warranted),
+Next: Run /to-sandcastle to generate the agent orchestration scaffold (if warranted),
 or start working issues manually. Open docs/kanban.html in a browser to visualize progress.
 ```
 
 ## What Handoff Does NOT Do
 
 - Does not scaffold code (no src/, no package.json, no framework setup)
-- Does not install hooks or coding standards (those are stack-specific — the first coding session or to-sandcastle handles them)
-- Does not set up Sandcastle or agent orchestration (that's the to-sandcastle step)
+- Does not install hooks or coding standards (those are stack-specific — the first coding session or /to-sandcastle handles them)
+- Does not set up Sandcastle or agent orchestration (that's /to-sandcastle)
 - Does not run the installed skills — it only installs them so the project can use them later

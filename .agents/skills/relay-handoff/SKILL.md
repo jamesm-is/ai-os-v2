@@ -1,3 +1,8 @@
+---
+name: relay-handoff
+description: Pick up a relay from a previous session. Lists available relays and lets you choose which one to resume.
+---
+
 # Relay Handoff
 
 Pick up a relay from a previous session. Lists available relays and lets you choose which one to resume.
@@ -5,8 +10,8 @@ Pick up a relay from a previous session. Lists available relays and lets you cho
 ## Process
 
 1. Check if `--all` was passed as an argument.
-   - **Without `--all`:** List all `.md` files in `.claude/relays/` that do NOT start with `DONE-`.
-   - **With `--all`:** List ALL `.md` files in `.claude/relays/`, including `DONE-` files. Show `DONE-` files with a `[DONE]` tag in the label so they're visually distinct.
+   - **Without `--all`:** List all `.md` files in `relays/` that do NOT start with `DONE-`.
+   - **With `--all`:** List ALL `.md` files in `relays/`, including `DONE-` files. Show `DONE-` files with a `[DONE]` tag in the label so they're visually distinct.
 2. If none exist, report "No relays available." and stop.
 3. If exactly one exists, read it and proceed directly.
 4. If multiple exist, present them as choices. Show each relay's date and topic slug as the label, and the "next session focus" line as the description.

@@ -1,3 +1,8 @@
+---
+name: validate-slices
+description: Audit every issue for vertical slice quality. Catches horizontal decomposition, Phase 0 leakage, and missing acceptance criteria.
+---
+
 # Vertical Slice Validator
 
 Audit implementation issues to determine whether each one is a true vertical slice or a horizontal/layer-based task disguised as a slice. Prefer targeted rewrites over regenerating the full issue list.
@@ -129,4 +134,4 @@ Then ...
 3. Update `projects/<project-name>/status.md`:
    - If ≥80% pass: set `stage: slices-validated`
    - If <80% pass: keep `stage: issues-ready` (slices need work before handoff)
-4. Tell the user the next step: proceed to handoff (see `agents/skills/handoff.md`) if passing, fix issues if borderline, or re-run to-issues (see `agents/skills/to-issues.md`) if failing.
+4. Tell the user the next step: proceed to `/handoff` if passing, fix issues if borderline, or re-run `/to-issues` if failing.

@@ -1,3 +1,8 @@
+---
+name: align
+description: Run the ai-os-v2 alignment grill for a new project idea. Interviews relentlessly until reaching shared understanding, then derives the tech stack from requirements.
+---
+
 # Align
 
 Interview the user relentlessly about his project idea until reaching shared understanding. Walk down each branch of the decision tree, resolving dependencies between decisions one by one. For each question, provide your recommended answer.
@@ -69,7 +74,7 @@ Review domain decisions against the chosen stack.
 2. Update `projects/<project-name>/status.md` to `stage: aligned`.
 3. Print a summary of what was decided: core domain terms (count), stack, scope boundaries, key decisions.
 
-After lock, tell the user to run the to-prd step next (see `agents/skills/to-prd.md`).
+After lock, tell the user to run `/to-prd` next.
 
 ## Output Artifacts
 
