@@ -24,7 +24,7 @@ Every project flows through the pipeline, run in order:
 
 After step 5, the project is fully self-governing. ai-os-v2's job is done.
 
-**Post-handoff (optional):** to-sandcastle — generate agent orchestration scaffold (Dockerfile, prompts, orchestration loop). You choose your CLI (Claude Code, Codex, or hybrid) and auth mode (subscription or API key).
+**Post-handoff (optional):** to-sandcastle — generate agent orchestration scaffold (Dockerfile, prompts, orchestration loop). You choose your CLI (Claude Code, Codex, Cursor, or hybrid) and auth mode (subscription or API key).
 
 ## What you get at the end
 
@@ -40,7 +40,8 @@ A project repo in `~/ai-projects/<project-name>/` with:
 - **docs/kanban-state.json** — board state (updated by Sandcastle agents during autonomous runs)
 - **docs/adr/** — architectural decision records
 - **.claude/skills/** — pipeline and utility skills as Claude Code slash commands
-- **agents/skills/** — same skills as flat markdown (for Codex / other agents)
+- **.agents/skills/** — same skills in Codex app format (auto-discovered as `/commands` in Codex)
+- **relays/** — shared relay directory for session handoffs (agent-neutral, gitignored)
 - **.sandcastle/** — autonomous agent orchestration (after to-sandcastle):
   - `main.mts` — orchestration loop (plan → implement → review → PR)
   - `Dockerfile` — containerized build environment (CLIs installed match your chosen configuration)
@@ -53,6 +54,15 @@ A project repo in `~/ai-projects/<project-name>/` with:
 ### Self-governing projects
 
 Handoff installs the pipeline skills into the project repo, adapted for existing-codebase context. This means a live project can run the full planning loop — align, PRD, issues, validation — for new features without returning to ai-os-v2. The only skill that stays ai-os-v2-only is handoff itself, since its job is creating new repos.
+
+### Session relay
+
+When you need to hand off context between sessions (or between agents), use the relay skills:
+
+- **relay** — compacts the current conversation into a relay document saved to `relays/` at repo root. Includes decisions made, current state, and suggested next skills. Works from both Claude Code and Codex.
+- **relay-handoff** — lists available relays, lets you pick one up, loads it into context, and marks it done with a `DONE-` prefix. Supports `--all` to also show completed relays for reference.
+
+The `relays/` directory is gitignored — relay files are local-only session artifacts, not project documentation.
 
 ### Agent configuration (Sandcastle)
 
@@ -89,13 +99,13 @@ The Dockerfile, `.env.example`, and `main.mts` are all generated to match your c
 
 3. Run the preflight check to verify your machine has everything needed:
 
-   **Claude Code:** `/preflight` | **Codex:** `Read agents/skills/preflight.md and follow its instructions`
+   **Claude Code:** `/preflight` | **Codex:** `/preflight` (auto-discovered from `.agents/skills/`)
 
 4. Start your AI agent in the repo and describe your app idea, then run the pipeline.
 
 ### Claude Code
 
-Skills are auto-discovered as slash commands:
+Skills are auto-discovered as slash commands from `.claude/skills/`:
 
 ```
 /align
@@ -103,15 +113,32 @@ Skills are auto-discovered as slash commands:
 
 Follow the pipeline in order. Each skill tells you what to run next.
 
-### Codex / other agents
+### Codex
 
-The same skills are available as plain markdown files in `agents/skills/`. Point your agent at them in order:
+Skills are auto-discovered as slash commands from `.agents/skills/`:
 
 ```
-Read agents/skills/align.md and follow its instructions
+/align
 ```
 
-Your agent reads `AGENTS.md` as its boot file (same content as `CLAUDE.md`, tool-neutral language). Run each skill in order: `align.md` → `to-prd.md` → `to-issues.md` → `validate-slices.md` → `handoff.md`.
+Your agent reads `AGENTS.md` as its boot file. Run each skill in order: `/align` → `/to-prd` → `/to-issues` → `/validate-slices` → `/handoff`.
+
+## Skills
+
+Eleven skills total, installed in both `.claude/skills/` and `.agents/skills/`:
+
+| Skill | Category | Description |
+|---|---|---|
+| align | Pipeline | Grill the user on the idea, build domain glossary, derive tech stack |
+| to-prd | Pipeline | Synthesize PRD from alignment outputs |
+| to-issues | Pipeline | Decompose PRD into vertical slice issues |
+| validate-slices | Pipeline | Audit issues for vertical slice quality |
+| handoff | Pipeline | Create project repo with artifacts and skills |
+| to-sandcastle | Post-handoff | Generate autonomous agent orchestration scaffold |
+| improve-codebase-architecture | Architecture | Surface deepening opportunities for testability |
+| relay | Utility | Compact conversation into a relay document for session handoff |
+| relay-handoff | Utility | Pick up a relay from a previous session |
+| preflight | Utility | Verify local machine prerequisites |
 
 ## Design principles
 
@@ -120,7 +147,7 @@ Your agent reads `AGENTS.md` as its boot file (same content as `CLAUDE.md`, tool
 - **Vertical slices, not horizontal layers.** Issues cut through all layers end-to-end. Each is independently demoable. Validated before handoff.
 - **Alignment before implementation.** The grill forces you to resolve ambiguity upfront. Cheaper to change a decision in a doc than in code.
 - **Self-governing projects.** Once handed off, the project repo has everything it needs — spec, glossary, issues, skills, agent orchestration. It doesn't depend on ai-os-v2.
-- **AI-agnostic.** The pipeline works with any agent that can read markdown. Claude Code gets slash commands; everything else gets `agents/skills/`. Same pipeline, same outputs.
+- **AI-agnostic.** The pipeline works with any agent that can read markdown. Claude Code gets `.claude/skills/`; Codex gets `.agents/skills/`. Same pipeline, same outputs.
 
 ## Project structure
 
@@ -137,18 +164,21 @@ ai-os-v2/
 │       ├── to-sandcastle/
 │       ├── improve-codebase-architecture/
 │       ├── relay/
+│       ├── relay-handoff/
 │       └── preflight/
-├── agents/                        # Tool-neutral mirror (Codex, etc.)
-│   └── skills/                    #   same skills as flat markdown
-│       ├── align.md
-│       ├── to-prd.md
-│       ├── to-issues.md
-│       ├── validate-slices.md
-│       ├── handoff.md
-│       ├── to-sandcastle.md
-│       ├── relay.md
-│       ├── preflight.md
-│       └── improve-codebase-architecture/
+├── .agents/                       # Codex integration
+│   └── skills/                    #   skills (auto-discovered as /commands in Codex)
+│       ├── align/
+│       ├── to-prd/
+│       ├── to-issues/
+│       ├── validate-slices/
+│       ├── handoff/
+│       ├── to-sandcastle/
+│       ├── improve-codebase-architecture/
+│       ├── relay/
+│       ├── relay-handoff/
+│       └── preflight/
+├── relays/                        # Session relay files (gitignored)
 ├── templates/
 │   └── kanban.html                # Kanban board template (copied to projects at handoff)
 ├── context/
