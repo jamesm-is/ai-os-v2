@@ -395,7 +395,7 @@ Replace `{{TYPECHECK_CMD}}` and `{{TEST_CMD}}` with the detected stack commands 
 
 #### `review-prompt.md`
 
-Use `{{BRANCH}}` as a template variable. Use `master` as the base branch reference (Sandcastle convention).
+Use `{{BRANCH}}` and `{{BASE_BRANCH}}` as template variables.
 
 ```markdown
 # TASK
@@ -404,13 +404,13 @@ Review the code changes on branch `{{BRANCH}}` and improve code clarity, consist
 
 # CONTEXT
 
-## Branch diff (against master)
+## Branch diff (against {{BASE_BRANCH}})
 
-!`git diff master...HEAD`
+!`git diff {{BASE_BRANCH}}...HEAD`
 
 ## Commits on this branch
 
-!`git log master..HEAD --oneline`
+!`git log {{BASE_BRANCH}}..HEAD --oneline`
 
 # REVIEW PROCESS
 
@@ -478,7 +478,7 @@ For each branch:
    - Title: the issue title
    - Body: a summary of what was implemented, key decisions, and files changed
    - Link the issue by including `Closes #<number>` in the PR body
-   - Base branch: master
+   - Base branch: {{BASE_BRANCH}}
 4. After the PR is created, remove the `ready-for-agent` label from the issue so it is not picked up again:
    `gh issue edit <number> --remove-label ready-for-agent`
 
@@ -498,10 +498,11 @@ import * as sandcastle from "@ai-hero/sandcastle";
 import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
 import { createServer } from "http";
 import { readFile } from "fs/promises";
-import { join, extname } from "path";
-import { exec } from "child_process";
+import { join, extname, resolve } from "path";
+import { exec, execSync } from "child_process";
 
 const MAX_ITERATIONS = 10;
+const BASE_BRANCH = execSync("git rev-parse --verify main 2>/dev/null && echo main || echo master", { encoding: "utf-8" }).trim();
 const BOARD_PORT = 4040;
 
 // === Kanban Board Server ===
@@ -526,7 +527,13 @@ const server = createServer(async (req, res) => {
     res.end(`<script>window.open("/kanban.html");setTimeout(()=>window.close(),500);</script>`);
     return;
   }
-  const filePath = join(docsDir, req.url === "/" ? "kanban.html" : req.url!);
+  const resolved = join(docsDir, req.url === "/" ? "kanban.html" : req.url!);
+  const filePath = resolve(resolved);
+  if (!filePath.startsWith(docsDir)) {
+    res.writeHead(403);
+    res.end("Forbidden");
+    return;
+  }
   try {
     const data = await readFile(filePath);
     res.writeHead(200, {
@@ -634,6 +641,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
             promptFile: "./.sandcastle/review-prompt.md",
             promptArgs: {
               BRANCH: issue.branch,
+              BASE_BRANCH,
             },
           });
 
@@ -694,6 +702,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
       ISSUES: completedIssues
         .map((i) => `- ${i.id}: ${i.title}`)
         .join("\n"),
+      BASE_BRANCH,
     },
   });
 

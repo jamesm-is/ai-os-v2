@@ -630,6 +630,12 @@ body > * { position: relative; z-index: 1; }
 const COLUMNS = ['backlog', 'in-progress', 'review', 'done'];
 let cardIndex = 0;
 
+function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
 function renderCard(issue) {
   const isHitl = issue.type === 'HITL';
   const isDone = issue.status === 'done';
@@ -646,19 +652,19 @@ function renderCard(issue) {
 
   const blockedHtml = issue.blockedBy.length > 0 && !isDone
     ? `<div class="card-blocked">${issue.blockedBy.map(b =>
-        `<span class="blocked-tag">${b}</span>`
+        `<span class="blocked-tag">${esc(b)}</span>`
       ).join('')}</div>`
     : '';
 
   const inner = `
     <div class="card-top">
-      <span class="card-id">${issue.id}</span>
+      <span class="card-id">${esc(issue.id)}</span>
       <div class="card-badges">
-        <span class="badge ${badgeClass}">${issue.type}</span>
+        <span class="badge ${badgeClass}">${esc(issue.type)}</span>
         <span class="badge badge-phase">P${issue.phase}</span>
       </div>
     </div>
-    <div class="card-title">${issue.title}</div>
+    <div class="card-title">${esc(issue.title)}</div>
     <div class="card-progress">
       <div class="progress-track">
         <div class="progress-fill ${fillClass}" style="width: ${progress}%"></div>
