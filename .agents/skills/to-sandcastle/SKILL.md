@@ -289,10 +289,10 @@ Hook: `printenv OPENAI_API_KEY | codex login --with-api-key`
 
 Read the PRD's Technical Stack section and classify the project:
 
-| Stack | Base Image | Package Hook | Test Command | Typecheck Command |
-|---|---|---|---|---|
-| **Node/TypeScript** | `node:22-bookworm` | `npm install` | `npm run test` | `npm run typecheck` |
-| **Python** | `python:3.12-bookworm` | `pip install -e ".[dev]"` | `pytest` | `pyright` or `mypy` (from PRD) |
+| Stack | Base Image | Package Hook | Test Command | Typecheck Command | Build Command |
+|---|---|---|---|---|---|
+| **Node/TypeScript** | `node:22-bookworm` | `npm install` | `npm run test` | `npm run typecheck` | `npm run build` |
+| **Python** | `python:3.12-bookworm` | `pip install -e ".[dev]"` | `pytest` | `pyright` or `mypy` (from PRD) | `python -m build` or N/A |
 
 If the stack doesn't match either pattern, generate a Node-based scaffold and warn the user to customize the Dockerfile and hooks.
 
@@ -307,6 +307,7 @@ Generate `CODING_STANDARDS.md` from the PRD and the project's boot file (CLAUDE.
 - **Style rules** from the tech stack conventions (naming, imports, exports)
 - **Testing rules** from the PRD's Testing Decisions section
 - **Architecture rules** from the PRD's Modules section and any ADRs
+- **Migration rules** — always use timestamp-based filenames (`YYYYMMDD_HHMMSS_description.sql`) to avoid collisions between parallel branches. Never use sequential numbering.
 
 Keep it concise — agents reference this during review. No fluff.
 
@@ -639,6 +640,12 @@ If applicable, use RGR to complete the task.
 3. REPEAT until done
 4. REFACTOR the code
 
+# MIGRATIONS
+
+If this issue requires database migrations, use timestamp-based filenames to avoid collisions with parallel branches:
+`YYYYMMDD_HHMMSS_short_description.sql` (e.g., `20260526_143000_add_prompt_blocks.sql`).
+Never use sequential numbering like `002_*.sql` — parallel branches will collide.
+
 # FEEDBACK LOOPS
 
 Before committing, run `{{TYPECHECK_CMD}}` and `{{TEST_CMD}}` to ensure the tests pass.
@@ -668,7 +675,7 @@ Once complete, output <promise>COMPLETE</promise>.
 ONLY WORK ON A SINGLE TASK.
 ```
 
-Replace `{{TYPECHECK_CMD}}` and `{{TEST_CMD}}` with the detected stack commands (e.g., `npm run typecheck` and `npm run test` for Node/TS).
+Replace `{{TYPECHECK_CMD}}`, `{{TEST_CMD}}`, and `{{BUILD_CMD}}` with the detected stack commands (e.g., `npm run typecheck`, `npm run test`, and `npm run build` for Node/TS).
 
 #### `review-prompt.md`
 
@@ -702,11 +709,17 @@ Review the code changes on branch `{{BRANCH}}` and improve code clarity, consist
    - Avoid nested ternary operators - prefer switch statements or if/else chains
    - Choose clarity over brevity - explicit code is often better than overly compact code
 
-3. **Check correctness**:
+3. **Check correctness** — go through every item:
    - Does the implementation match the intent? Are edge cases handled?
    - Are new/changed behaviours covered by tests?
    - Are there unsafe casts, `any` types, or unchecked assumptions?
    - Does the change introduce injection vulnerabilities, credential leaks, or other security issues?
+   - Every status/state written to a response must also be persisted to the DB
+   - Any SELECT-then-INSERT/UPDATE pattern must have a DB-level uniqueness or locking guard
+   - New database migrations must not collide with existing migration numbering
+   - New environment variables must be documented in `.env.example`
+   - Server-only code paths (DB calls, secrets) must not be importable from client bundles
+   - Run `{{BUILD_CMD}}` to confirm the project builds without errors
 
 4. **Maintain balance**: Avoid over-simplification that could:
    - Reduce code clarity or maintainability
@@ -724,10 +737,10 @@ Review the code changes on branch `{{BRANCH}}` and improve code clarity, consist
 If you find improvements to make:
 
 1. Make the changes directly on this branch
-2. Run tests and type checking to ensure nothing is broken
+2. Run `{{TYPECHECK_CMD}}`, `{{TEST_CMD}}`, and `{{BUILD_CMD}}` to ensure nothing is broken
 3. Commit describing the refinements
 
-If the code is already clean and well-structured, do nothing.
+If the code is already clean and well-structured, still run `{{BUILD_CMD}}` to confirm the branch builds. If the build fails, fix it before marking complete.
 
 Once complete, output <promise>COMPLETE</promise>.
 ```
@@ -764,7 +777,7 @@ Do NOT merge the branches. Do NOT close the issues manually — the PR will clos
 Once all PRs are created, output <promise>COMPLETE</promise>.
 ```
 
-Replace `{{TYPECHECK_CMD}}` and `{{TEST_CMD}}` with the detected stack commands.
+Replace `{{TYPECHECK_CMD}}`, `{{TEST_CMD}}`, and `{{BUILD_CMD}}` with the detected stack commands.
 
 #### `main.mts`
 
@@ -1173,7 +1186,27 @@ gh label create phase-1 --description "Phase 1" --color 1D76DB
 # ... for each phase in the project
 ```
 
-### 5. Commit the Scaffold
+### 5. Validate Labels
+
+After pushing all issues, verify that no HITL or Phase 0 issue was incorrectly labeled `ready-for-agent`:
+
+```bash
+# Get all ready-for-agent issues
+gh issue list --label ready-for-agent --json number,title,labels --jq '.[] | {number, title, labels: [.labels[].name]}'
+```
+
+Cross-reference each result against the local issue files in `docs/issues/`. For every issue returned:
+- Parse the matching issue file and confirm `type: AFK` and `phase: >= 1`
+- If any issue is `type: HITL` or `phase: 0`, immediately remove the label: `gh issue edit <number> --remove-label ready-for-agent`
+- Warn the user about each corrected issue
+
+Also add a `ready-for-human` label to all HITL issues so they're visible on the board:
+```bash
+gh label create ready-for-human --description "Requires human action" --color FFA500
+```
+For each HITL issue: `gh issue edit <number> --add-label ready-for-human`
+
+### 6. Commit the Scaffold
 
 ```bash
 cd ~/ai-projects/<project-name>
@@ -1182,11 +1215,11 @@ git commit -m "Add Sandcastle agent orchestration scaffold"
 git push
 ```
 
-### 6. Update ai-os-v2 Status
+### 7. Update ai-os-v2 Status
 
 Update `projects/<project-name>/status.md` to `stage: sandcastle-ready`.
 
-### 7. Print Summary and Setup Guide
+### 8. Print Summary and Setup Guide
 
 Print the summary with the chosen configuration, then walk the user through auth setup step by step.
 
