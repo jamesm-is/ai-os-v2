@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ai-os-v2 — How It Works</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0f1115; color: #e2e2e8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; padding: 3rem 2rem; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    h1 { font-size: 2rem; font-weight: 700; margin-bottom: .25rem; }
+    .subtitle { color: #8b8fa3; font-size: .95rem; margin-bottom: 3rem; }
+    h2 { font-size: 1.35rem; font-weight: 600; margin-bottom: 1.25rem; color: #f0f0f4; }
+    h3 { font-size: 1.05rem; font-weight: 600; margin-bottom: .75rem; color: #c4c8d8; }
+
+    .section { margin-bottom: 3.5rem; }
+
+    /* Pipeline */
+    .pipeline { display: flex; gap: 0; align-items: stretch; overflow-x: auto; padding-bottom: 1rem; }
+    .step { flex: 1; min-width: 170px; background: #171a21; border: 1px solid #2a2f3a; padding: 1.1rem 1rem; position: relative; }
+    .step:first-child { border-radius: 10px 0 0 10px; }
+    .step:last-child { border-radius: 0 10px 10px 0; }
+    .step.optional { border-style: dashed; border-color: #3d4255; }
+    .step-num { display: inline-block; width: 22px; height: 22px; border-radius: 50%; text-align: center; line-height: 22px; font-size: .7rem; font-weight: 700; margin-bottom: .5rem; }
+    .step-name { font-weight: 700; font-size: .95rem; margin-bottom: .4rem; }
+    .step-desc { font-size: .78rem; color: #9ca0b4; line-height: 1.5; }
+    .step-out { font-size: .72rem; color: #6d7290; margin-top: .5rem; font-style: italic; }
+    .arrow { display: flex; align-items: center; justify-content: center; color: #3d4255; font-size: 1.1rem; padding: 0 2px; background: #0f1115; z-index: 1; }
+
+    .c1 .step-num { background: #2563eb; color: #fff; }
+    .c2 .step-num { background: #7c3aed; color: #fff; }
+    .c3 .step-num { background: #0891b2; color: #fff; }
+    .c4 .step-num { background: #d97706; color: #fff; }
+    .c5 .step-num { background: #16a34a; color: #fff; }
+    .c6 .step-num { background: #64748b; color: #fff; }
+
+    /* Status chain */
+    .chain { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: 1.25rem; align-items: center; }
+    .chain-item { background: #1e2130; border: 1px solid #2a2f3a; border-radius: 6px; padding: .3rem .65rem; font-size: .75rem; font-weight: 600; color: #a5aac4; }
+    .chain-arrow { color: #3d4255; font-size: .85rem; }
+
+    /* File tree */
+    .tree { background: #171a21; border: 1px solid #2a2f3a; border-radius: 10px; padding: 1.5rem 1.75rem; font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace; font-size: .82rem; line-height: 1.9; }
+    .tree .dir { color: #e2e2e8; font-weight: 600; }
+    .tree .boot { color: #60a5fa; }
+    .tree .doc { color: #4ade80; }
+    .tree .skill { color: #c084fc; }
+    .tree .sand { color: #fb923c; }
+    .tree .infra { color: #94a3b8; }
+    .tree .note { color: #6d7290; font-style: italic; font-weight: 400; }
+    .tree .indent { color: #2a2f3a; }
+
+    /* Loop */
+    .loop-wrap { display: flex; gap: 0; align-items: stretch; flex-wrap: wrap; }
+    .loop-step { background: #171a21; border: 1px solid #2a2f3a; padding: 1rem 1.1rem; flex: 1; min-width: 140px; }
+    .loop-step:first-child { border-radius: 10px 0 0 10px; }
+    .loop-step:last-child { border-radius: 0 10px 10px 0; }
+    .loop-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-bottom: .3rem; }
+    .loop-model { font-size: .78rem; color: #9ca0b4; }
+    .loop-detail { font-size: .75rem; color: #6d7290; margin-top: .25rem; }
+    .lp { color: #60a5fa; }
+    .li { color: #4ade80; }
+    .lr { color: #c084fc; }
+    .lm { color: #fb923c; }
+    .lf { color: #94a3b8; }
+
+    .fork { background: #1a1d28; border: 1px solid #2a2f3a; border-radius: 8px; padding: 1rem 1.25rem; margin-top: 1rem; display: flex; gap: 1.5rem; }
+    .fork-opt { flex: 1; }
+    .fork-opt h4 { font-size: .82rem; font-weight: 700; margin-bottom: .25rem; }
+    .fork-opt p { font-size: .75rem; color: #9ca0b4; }
+    .badge { display: inline-block; border-radius: 999px; padding: .15rem .55rem; font-size: .68rem; font-weight: 700; margin-right: .25rem; }
+    .badge-auto { background: #16a34a22; color: #4ade80; border: 1px solid #16a34a44; }
+    .badge-human { background: #d9770622; color: #fbbf24; border: 1px solid #d9770644; }
+
+    .legend { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .legend-item { display: flex; align-items: center; gap: .4rem; font-size: .78rem; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <h1>ai-os-v2</h1>
+  <p class="subtitle">A project launcher for AI coding agents. Takes a raw idea through structured alignment and produces a self-governing project repo.</p>
+
+  <!-- PIPELINE -->
+  <div class="section">
+    <h2>Pipeline</h2>
+    <div class="pipeline">
+      <div class="step c1">
+        <div class="step-num">1</div>
+        <div class="step-name">align</div>
+        <div class="step-desc">Grill the user on their idea. Resolve domain terms, derive tech stack from requirements, lock decisions.</div>
+        <div class="step-out">context.md, align.md</div>
+      </div>
+      <div class="arrow">›</div>
+      <div class="step c2">
+        <div class="step-num">2</div>
+        <div class="step-name">to-prd</div>
+        <div class="step-desc">Synthesize a PRD from alignment outputs. No re-interviewing — just synthesis.</div>
+        <div class="step-out">prd.md</div>
+      </div>
+      <div class="arrow">›</div>
+      <div class="step c3">
+        <div class="step-num">3</div>
+        <div class="step-name">to-issues</div>
+        <div class="step-desc">Decompose PRD into vertical slice issues organized by phase and dependency.</div>
+        <div class="step-out">issues/ directory</div>
+      </div>
+      <div class="arrow">›</div>
+      <div class="step c4">
+        <div class="step-num">4</div>
+        <div class="step-name">validate-slices</div>
+        <div class="step-desc">Audit each issue against 7 checks: user value, layer coverage, demoability, dependency shape, size, phase 0 leakage, acceptance-test clarity.</div>
+        <div class="step-out">slice-audit.md</div>
+      </div>
+      <div class="arrow">›</div>
+      <div class="step c5">
+        <div class="step-num">5</div>
+        <div class="step-name">handoff</div>
+        <div class="step-desc">Create project repo, copy artifacts, install project-mode skills, seed vendored runtime, push to GitHub.</div>
+        <div class="step-out">~/ai-projects/&lt;name&gt;/</div>
+      </div>
+    </div>
+
+    <p style="font-size:.8rem;color:#6d7290;margin-top:.75rem;">After handoff: <code style="color:#fb923c">cd ~/ai-projects/&lt;name&gt;/</code> and run <code style="color:#fb923c">/to-sandcastle</code> from the project repo.</p>
+
+    <div class="chain">
+      <div class="chain-item">aligned</div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-item">prd-ready</div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-item">issues-ready</div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-item">slices-validated</div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-item">handed-off-to-github</div>
+    </div>
+  </div>
+
+  <!-- GENERATED PROJECT -->
+  <div class="section">
+    <h2>Generated Project Skeleton</h2>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#60a5fa"></div> Boot files</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div> Documentation</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#c084fc"></div> Skills</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fb923c"></div> Sandcastle</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#94a3b8"></div> Infrastructure</div>
+    </div>
+
+    <div class="tree">
+<span class="dir">&lt;project-name&gt;/</span>
+<span class="indent">├── </span><span class="boot">CLAUDE.md</span>            <span class="note">project boot file for Claude Code</span>
+<span class="indent">├── </span><span class="boot">AGENTS.md</span>            <span class="note">project boot file for Codex</span>
+<span class="indent">├── </span><span class="boot">CONTEXT.md</span>           <span class="note">domain glossary from alignment</span>
+<span class="indent">├── </span><span class="infra">.gitignore</span>
+<span class="indent">│</span>
+<span class="indent">├── </span><span class="dir">docs/</span>
+<span class="indent">│   ├── </span><span class="doc">prd.md</span>              <span class="note">full product requirements</span>
+<span class="indent">│   ├── </span><span class="doc">slice-audit.md</span>      <span class="note">vertical slice audit report</span>
+<span class="indent">│   ├── </span><span class="doc">kanban.html</span>         <span class="note">visual board — JSON + GitHub overlay</span>
+<span class="indent">│   ├── </span><span class="doc">kanban-state.json</span>   <span class="note">board state</span>
+<span class="indent">│   ├── </span><span class="doc">issues/</span>             <span class="note">vertical slice issue files by phase</span>
+<span class="indent">│   └── </span><span class="doc">adr/</span>                <span class="note">architectural decision records</span>
+<span class="indent">│</span>
+<span class="indent">├── </span><span class="dir">.claude/skills/</span>        <span class="note">project-mode skills as slash commands</span>
+<span class="indent">│   ├── </span><span class="skill">align/</span>
+<span class="indent">│   ├── </span><span class="skill">to-prd/</span>
+<span class="indent">│   ├── </span><span class="skill">to-issues/</span>
+<span class="indent">│   ├── </span><span class="skill">validate-slices/</span>
+<span class="indent">│   ├── </span><span class="skill">to-sandcastle/</span>
+<span class="indent">│   ├── </span><span class="skill">improve-codebase-architecture/</span>
+<span class="indent">│   ├── </span><span class="skill">relay/</span>
+<span class="indent">│   └── </span><span class="skill">relay-handoff/</span>
+<span class="indent">│</span>
+<span class="indent">├── </span><span class="dir">.agents/skills/</span>        <span class="note">same skills for Codex</span>
+<span class="indent">│</span>
+<span class="indent">├── </span><span class="infra">relays/</span>                <span class="note">session handoff files (gitignored)</span>
+<span class="indent">│</span>
+<span class="indent">└── </span><span class="dir">.sandcastle/</span>           <span class="note">vendor seeded by handoff, scaffold by to-sandcastle</span>
+<span class="indent">    ├── </span><span class="sand">vendor/sandcastle/</span>  <span class="note">vendored runtime (v0.6.3)</span>
+<span class="indent">    ├── </span><span class="sand">main.mts</span>            <span class="note">orchestration loop</span>
+<span class="indent">    ├── </span><span class="sand">plan-prompt.md</span>      <span class="note">dependency graph + issue selection</span>
+<span class="indent">    ├── </span><span class="sand">implement-prompt.md</span> <span class="note">TDD coding with RGR loop</span>
+<span class="indent">    ├── </span><span class="sand">review-prompt.md</span>    <span class="note">code quality + standards</span>
+<span class="indent">    ├── </span><span class="sand">merge-prompt.md</span>     <span class="note">PR creation + label cleanup</span>
+<span class="indent">    ├── </span><span class="sand">CODING_STANDARDS.md</span> <span class="note">derived from PRD</span>
+<span class="indent">    ├── </span><span class="sand">Dockerfile</span>          <span class="note">stack + CLI specific</span>
+<span class="indent">    ├── </span><span class="sand">.env.example</span>         <span class="note">auth template</span>
+<span class="indent">    └── </span><span class="sand">.gitignore</span>
+    </div>
+  </div>
+
+  <!-- SANDCASTLE LOOP -->
+  <div class="section">
+    <h2>Sandcastle Agent Loop</h2>
+    <p style="font-size:.85rem;color:#8b8fa3;margin-bottom:1rem;">Each iteration picks unblocked issues from the current phase, works them in parallel Docker containers, then creates PRs.</p>
+
+    <div class="loop-wrap">
+      <div class="loop-step">
+        <div class="loop-label lp">Plan</div>
+        <div class="loop-model">Opus 4.7</div>
+        <div class="loop-detail">Build dependency graph, pick unblocked issues, assign branches</div>
+      </div>
+      <div class="arrow">›</div>
+      <div class="loop-step">
+        <div class="loop-label li">Implement</div>
+        <div class="loop-model">GPT-5.5 low / Composer 2.5</div>
+        <div class="loop-detail">One Docker container per issue, TDD with RGR loop</div>
+      </div>
+      <div class="arrow">›</div>
+      <div class="loop-step">
+        <div class="loop-label lr">Review</div>
+        <div class="loop-model">GPT-5.5 high</div>
+        <div class="loop-detail">Code quality pass, standards enforcement, build check</div>
+      </div>
+      <div class="arrow">›</div>
+      <div class="loop-step">
+        <div class="loop-label lm">Create PRs</div>
+        <div class="loop-model">Opus 4.7</div>
+        <div class="loop-detail">Push branches, create PRs with Closes #N, remove labels</div>
+      </div>
+      <div class="arrow">›</div>
+      <div class="loop-step">
+        <div class="loop-label lf">Merge</div>
+        <div class="loop-model">Strategy fork</div>
+        <div class="loop-detail">Auto-merge or wait for human</div>
+      </div>
+    </div>
+
+    <div class="fork">
+      <div class="fork-opt">
+        <h4><span class="badge badge-auto">AUTO</span> Auto-merge</h4>
+        <p>Script runs typecheck, test, build on each PR. If all pass: approve + squash merge. If any fail: fall back to human review. Loop continues to next phase.</p>
+      </div>
+      <div class="fork-opt">
+        <h4><span class="badge badge-human">HUMAN</span> Human-merge</h4>
+        <p>Script pauses after PRs are created. Polls every 30s until all PRs show state MERGED. Then continues to next phase.</p>
+      </div>
+    </div>
+  </div>
+
+  <p style="font-size:.75rem;color:#4a4e63;text-align:center;margin-top:2rem;">ai-os-v2 — project launcher for AI coding agents</p>
+
+</div>
+</body>
+</html>

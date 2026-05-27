@@ -24,8 +24,6 @@ Every project flows through five steps. Run them in order — each step consumes
 4. **validate-slices** — Audit every issue for vertical slice quality. Catches horizontal decomposition, Phase 0 leakage, and missing acceptance criteria before handoff. → Read `.agents/skills/validate-slices/SKILL.md`
 5. **handoff** — Package everything and create the project repo in `ai-projects/`. → Read `.agents/skills/handoff/SKILL.md`
 
-After handoff, optionally run **to-sandcastle** for agent orchestration. → Read `.agents/skills/to-sandcastle/SKILL.md`
-
 Additional skills available at any time:
 - **preflight** — Check that the local machine has all prerequisites. Run this first on a new machine. → Read `.agents/skills/preflight/SKILL.md`
 - **improve-codebase-architecture** — Deepening audits for live codebases. → Read `.agents/skills/improve-codebase-architecture/SKILL.md`
@@ -52,7 +50,7 @@ projects/<project-name>/
 - No default tech stack. Every project earns its stack from its requirements.
 - CONTEXT.md entries are added only when the grill resolves genuine ambiguity — never speculatively.
 - The PRD copy in ai-os-v2 is archival. The project repo owns the living version after handoff.
-- Skills live in `.agents/skills/` (Codex) and `.claude/skills/` (Claude Code). Ten skills total: pipeline (align, to-prd, to-issues, validate-slices, handoff), post-handoff (to-sandcastle), architecture (improve-codebase-architecture), utility (relay, relay-handoff, preflight).
+- Skills live in `.agents/skills/` (Codex) and `.claude/skills/` (Claude Code). Nine launcher skills: pipeline (align, to-prd, to-issues, validate-slices, handoff), architecture (improve-codebase-architecture), utility (relay, relay-handoff, preflight). Project repos also get the to-sandcastle skill template.
 
 ## Session Logging
 

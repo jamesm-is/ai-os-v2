@@ -50,6 +50,8 @@ Create `~/ai-projects/<project-name>/` with this structure:
 ├── .agents/
 │   └── skills/
 │       └── (Codex app skills — YAML frontmatter + SKILL.md)
+├── .sandcastle/
+│   └── vendor/sandcastle/  (vendored runtime — seeded by handoff)
 ```
 
 ### 2. Generate CLAUDE.md
@@ -231,13 +233,15 @@ Contents:
 - docs/kanban-state.json (board state — auto-refreshes every 30s)
 - .claude/skills/ (Claude Code slash commands)
 - .agents/skills/ (Codex app skills)
+- .sandcastle/vendor/sandcastle/ (vendored runtime for /to-sandcastle)
 - relays/ (shared relay directory)
 
 This project is self-governing. New features can be planned and built entirely in-repo
 using the installed pipeline skills — no need to return to ai-os-v2.
 
-Next: Run /to-sandcastle to generate the agent orchestration scaffold (if warranted),
-or start working issues manually. Open docs/kanban.html in a browser to visualize progress.
+Next: cd into ~/ai-projects/<project-name>/ and run /to-sandcastle to generate the
+agent orchestration scaffold, or start working issues manually.
+Open docs/kanban.html in a browser to visualize progress.
 ```
 
 ## What Handoff Does NOT Do

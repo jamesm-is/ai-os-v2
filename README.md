@@ -9,7 +9,7 @@ This is not an app framework or a template generator. It's a thinking environmen
 ## What it does
 
 ```
-Raw idea → Alignment grill → PRD → Vertical slice issues → Slice audit → Project repo → Agent orchestration
+Raw idea → Alignment grill → PRD → Vertical slice issues → Slice audit → Project repo
 ```
 
 Every project flows through the pipeline, run in order:
@@ -24,7 +24,7 @@ Every project flows through the pipeline, run in order:
 
 After step 5, the project is fully self-governing. ai-os-v2's job is done.
 
-**Post-handoff (optional):** to-sandcastle — generate agent orchestration scaffold (Dockerfile, prompts, orchestration loop). You choose your CLI (Claude Code, Codex, Cursor, or hybrid), auth mode (subscription or API key), execution mode (full or phase-by-phase), and merge strategy (auto-merge or human-merge).
+**Next step (from the project repo):** `cd ~/ai-projects/<name>/` and run `/to-sandcastle` to generate the agent orchestration scaffold (Dockerfile, prompts, orchestration loop). This is a project-level skill installed by handoff — not an ai-os-v2 pipeline step.
 
 ## What you get at the end
 
@@ -34,7 +34,7 @@ A project repo in `~/ai-projects/<project-name>/` with:
 - **AGENTS.md** — project boot file for Codex / other agents
 - **CONTEXT.md** — domain glossary built during alignment (the source of truth for terminology)
 - **docs/prd.md** — full product requirements document
-- **docs/issues/** — vertical slice issue files (pushed to GitHub Issues via to-sandcastle)
+- **docs/issues/** — vertical slice issue files (pushed to GitHub Issues by the project's /to-sandcastle)
 - **docs/slice-audit.md** — vertical slice audit report from validate-slices
 - **docs/kanban.html** — visual kanban board (open in browser, auto-refreshes every 30s)
 - **docs/kanban-state.json** — board state (updated by Sandcastle agents during autonomous runs)
@@ -66,7 +66,7 @@ The `relays/` directory is gitignored — relay files are local-only session art
 
 ### Agent configuration (Sandcastle)
 
-During to-sandcastle, you pick four settings:
+When you run `/to-sandcastle` from the project repo, you pick four settings:
 
 **CLI configuration** — six options: Claude only, Codex only, Cursor only, Hybrid (Claude+Codex), Hybrid (Claude+Cursor), or Hybrid (Claude+Cursor+Codex). Each determines which models fill each agent role:
 
@@ -95,7 +95,7 @@ The Dockerfile, `.env.example`, and `main.mts` are all generated to match your c
 
 - An AI coding agent ([Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex](https://openai.com/index/codex/), or similar)
 - [GitHub CLI](https://cli.github.com/) (`gh`) installed and authenticated
-- For Sandcastle: Docker Desktop, Node.js 18+, plus credentials matching your chosen CLI + auth mode. The sandcastle SDK is vendored in `vendor/sandcastle/` — no npm install needed.
+- For Sandcastle (run from the project repo): Docker Desktop, Node.js 18+, plus credentials matching your chosen CLI + auth mode. The sandcastle SDK is vendored — no SDK install needed; `/to-sandcastle` installs runtime npm deps in the project.
 
 ## Getting started
 
@@ -135,7 +135,7 @@ Your agent reads `AGENTS.md` as its boot file. Run each skill in order: `/align`
 
 ## Skills
 
-Ten skills total, installed in both `.claude/skills/` and `.agents/skills/`:
+Nine skills total, installed in both `.claude/skills/` and `.agents/skills/`:
 
 | Skill | Category | Description |
 |---|---|---|
@@ -144,7 +144,6 @@ Ten skills total, installed in both `.claude/skills/` and `.agents/skills/`:
 | to-issues | Pipeline | Decompose PRD into vertical slice issues |
 | validate-slices | Pipeline | Audit issues for vertical slice quality |
 | handoff | Pipeline | Create project repo with artifacts and skills |
-| to-sandcastle | Post-handoff | Generate autonomous agent orchestration scaffold |
 | improve-codebase-architecture | Architecture | Surface deepening opportunities for testability |
 | relay | Utility | Compact conversation into a relay document for session handoff |
 | relay-handoff | Utility | Pick up a relay from a previous session |
@@ -171,7 +170,6 @@ ai-os-v2/
 │       ├── to-issues/
 │       ├── validate-slices/
 │       ├── handoff/
-│       ├── to-sandcastle/
 │       ├── improve-codebase-architecture/
 │       ├── relay/
 │       ├── relay-handoff/
@@ -183,7 +181,6 @@ ai-os-v2/
 │       ├── to-issues/
 │       ├── validate-slices/
 │       ├── handoff/
-│       ├── to-sandcastle/
 │       ├── improve-codebase-architecture/
 │       ├── relay/
 │       ├── relay-handoff/

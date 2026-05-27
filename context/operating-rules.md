@@ -13,7 +13,6 @@ Operational policy for `ai-os-v2`.
 ## Pipeline Rules
 
 - The five core pipeline skills run in order: align → to-prd → to-issues → validate-slices → handoff.
-- to-sandcastle runs after handoff when agent orchestration is warranted.
 - Each skill consumes the previous skill's output.
 - Do not skip steps. Do not run them out of order.
 - The align skill must reach the "lock" checkpoint before to-prd runs.
@@ -37,7 +36,7 @@ Operational policy for `ai-os-v2`.
 ## Handoff Rules
 
 - Projects are created in `~/ai-projects/`.
-- Handoff ships thinking artifacts (CLAUDE.md, AGENTS.md, CONTEXT.md, PRD, ADRs, issue slices) plus pipeline and utility skills.
+- Handoff ships thinking artifacts (CLAUDE.md, AGENTS.md, CONTEXT.md, PRD, ADRs, issue slices), pipeline and utility skills, and the vendored Sandcastle runtime.
 - Handoff generates a kanban board (`docs/kanban.html` + `docs/kanban-state.json`) for visual issue tracking.
 - Handoff installs skills in two formats: `.claude/skills/` (Claude Code) and `.agents/skills/` (Codex).
 - No product code, no framework scaffolding at handoff time.
@@ -46,9 +45,8 @@ Operational policy for `ai-os-v2`.
 
 ## Skills
 
-Ten skills total:
+Nine skills total:
 - **Pipeline (5):** align, to-prd, to-issues, validate-slices, handoff
-- **Post-handoff (1):** to-sandcastle
 - **Architecture (1):** improve-codebase-architecture
 - **Utility (3):** relay, relay-handoff, preflight
 
