@@ -42,7 +42,7 @@ projects/<project-name>/
 
 ## Rules
 
-- No code lives in ai-os-v2. This is a thinking environment.
+- No product code lives in ai-os-v2. This is a thinking environment. Launcher infrastructure (vendored SDK, templates) is permitted.
 - No default tech stack. Every project earns its stack from its requirements.
 - CONTEXT.md entries are added only when the grill resolves genuine ambiguity — never speculatively.
 - The PRD copy in ai-os-v2 is archival. The project repo owns the living version after handoff.

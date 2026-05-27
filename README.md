@@ -153,7 +153,7 @@ Ten skills total, installed in both `.claude/skills/` and `.agents/skills/`:
 ## Design principles
 
 - **No default tech stack.** Every project earns its stack from its requirements. The grill derives the stack from constraints, not from habit.
-- **No code in ai-os-v2.** This is a thinking environment. Code lives in project repos.
+- **No product code in ai-os-v2.** This is a thinking environment. Product code lives in project repos. Launcher infrastructure (vendored SDK, templates) lives here.
 - **Vertical slices, not horizontal layers.** Issues cut through all layers end-to-end. Each is independently demoable. Validated before handoff.
 - **Alignment before implementation.** The grill forces you to resolve ambiguity upfront. Cheaper to change a decision in a doc than in code.
 - **Self-governing projects.** Once handed off, the project repo has everything it needs — spec, glossary, issues, skills, agent orchestration. It doesn't depend on ai-os-v2.

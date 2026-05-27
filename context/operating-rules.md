@@ -5,7 +5,7 @@ Operational policy for `ai-os-v2`.
 ## Core Principles
 
 - ai-os-v2 is a launcher, not mission control.
-- No code lives here. This is a thinking and planning environment.
+- No product code lives here. This is a thinking and planning environment. Launcher infrastructure (vendored SDK, templates) is permitted.
 - Every project earns its own tech stack from its own requirements. No defaults.
 - Capture durable decisions in files, not only in chat history.
 - Once a project is handed off, it is self-governing.
@@ -40,7 +40,7 @@ Operational policy for `ai-os-v2`.
 - Handoff ships thinking artifacts (CLAUDE.md, AGENTS.md, CONTEXT.md, PRD, ADRs, issue slices) plus pipeline and utility skills.
 - Handoff generates a kanban board (`docs/kanban.html` + `docs/kanban-state.json`) for visual issue tracking.
 - Handoff installs skills in two formats: `.claude/skills/` (Claude Code) and `.agents/skills/` (Codex).
-- No code, no framework scaffolding at handoff time.
+- No product code, no framework scaffolding at handoff time.
 - Handoff installs skills so the project is fully self-governing — it can run the full planning loop for new features without returning to ai-os-v2.
 - Handoff is the only skill that stays ai-os-v2-only. All other skills ship to the project repo.
 
