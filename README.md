@@ -24,7 +24,7 @@ Every project flows through the pipeline, run in order:
 
 After step 5, the project is fully self-governing. ai-os-v2's job is done.
 
-**Post-handoff (optional):** to-sandcastle — generate agent orchestration scaffold (Dockerfile, prompts, orchestration loop). You choose your CLI (Claude Code, Codex, Cursor, or hybrid) and auth mode (subscription or API key).
+**Post-handoff (optional):** to-sandcastle — generate agent orchestration scaffold (Dockerfile, prompts, orchestration loop). You choose your CLI (Claude Code, Codex, Cursor, or hybrid), auth mode (subscription or API key), execution mode (full or phase-by-phase), and merge strategy (auto-merge or human-merge).
 
 ## What you get at the end
 
@@ -66,26 +66,36 @@ The `relays/` directory is gitignored — relay files are local-only session art
 
 ### Agent configuration (Sandcastle)
 
-During to-sandcastle, you pick a CLI configuration. Five options: Claude only, Codex only, Cursor only, Hybrid (Claude+Codex), or Hybrid (Claude+Cursor). Each determines which models fill each agent role:
+During to-sandcastle, you pick four settings:
 
-| Role | Claude only | Codex only | Cursor only | Hybrid (Claude+Codex) | Hybrid (Claude+Cursor) |
-|---|---|---|---|---|---|
-| Planner | Opus 4.7 | GPT-5.5 (high) | Opus 4.7 (via Cursor) | Opus 4.7 | Opus 4.7 |
-| Implementer | Sonnet 4.6 | GPT-5.5 (low) | Composer 2.5 | GPT-5.5 (low) | Composer 2.5 |
-| Reviewer | Opus 4.6 | GPT-5.5 (medium) | GPT-5.5 (high via Cursor) | GPT-5.5 (high) | GPT-5.5 (high via Cursor) |
-| PR Creator | Opus 4.7 | GPT-5.5 (high) | Opus 4.7 (via Cursor) | Opus 4.7 | Opus 4.7 |
+**CLI configuration** — six options: Claude only, Codex only, Cursor only, Hybrid (Claude+Codex), Hybrid (Claude+Cursor), or Hybrid (Claude+Cursor+Codex). Each determines which models fill each agent role:
 
-You also pick an auth mode:
+| Role | Claude only | Codex only | Cursor only | Hybrid (Claude+Codex) | Hybrid (Claude+Cursor) | Hybrid (Claude+Cursor+Codex) |
+|---|---|---|---|---|---|---|
+| Planner | Opus 4.7 | GPT-5.5 (high) | Opus 4.7 (via Cursor) | Opus 4.7 | Opus 4.7 | Opus 4.7 |
+| Implementer | Sonnet 4.6 | GPT-5.5 (low) | Composer 2.5 | GPT-5.5 (low) | Composer 2.5 | Composer 2.5 |
+| Reviewer | Opus 4.6 | GPT-5.5 (medium) | GPT-5.5 (high via Cursor) | GPT-5.5 (high) | GPT-5.5 (high via Cursor) | GPT-5.5 (high via Codex) |
+| PR Creator | Opus 4.7 | GPT-5.5 (high) | Opus 4.7 (via Cursor) | Opus 4.7 | Opus 4.7 | Opus 4.7 |
+
+**Auth mode:**
 - **Subscription** — uses existing Claude / ChatGPT subscriptions (no API keys)
 - **API key** — pay-per-token from Anthropic / OpenAI credits
 
-The Dockerfile, `.env.example`, and `main.mts` are all generated to match your chosen CLI + auth combination. Issues are worked in parallel — each gets its own Docker container and branch. The loop runs until all issues are resolved or the iteration cap is hit.
+**Execution mode:**
+- **Full** — run all phases continuously until every issue has a PR
+- **Phase-by-phase** — complete the current phase, then stop
+
+**Merge strategy:**
+- **Auto-merge** — the orchestration script runs typecheck/test/build on each PR and merges automatically if all pass. Falls back to manual merge on failure.
+- **Human-merge** — pauses after PRs are created and waits for you to review and merge
+
+The Dockerfile, `.env.example`, and `main.mts` are all generated to match your configuration. Each issue gets its own Docker container and branch. The loop runs until all issues are resolved or the iteration cap is hit.
 
 ## Prerequisites
 
 - An AI coding agent ([Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex](https://openai.com/index/codex/), or similar)
 - [GitHub CLI](https://cli.github.com/) (`gh`) installed and authenticated
-- For Sandcastle: `@ai-hero/sandcastle` (installed automatically during to-sandcastle), plus credentials matching your chosen CLI + auth mode
+- For Sandcastle: Docker Desktop, Node.js 18+, plus credentials matching your chosen CLI + auth mode. The sandcastle SDK is vendored in `vendor/sandcastle/` — no npm install needed.
 
 ## Getting started
 
@@ -178,6 +188,8 @@ ai-os-v2/
 │       ├── relay/
 │       ├── relay-handoff/
 │       └── preflight/
+├── vendor/
+│   └── sandcastle/                # Vendored sandcastle SDK v0.6.3 (dist/ + src/)
 ├── relays/                        # Session relay files (gitignored)
 ├── templates/
 │   └── kanban.html                # Kanban board template (copied to projects at handoff)
