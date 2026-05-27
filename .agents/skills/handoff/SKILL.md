@@ -131,7 +131,7 @@ Also generate an `AGENTS.md` boot file alongside `CLAUDE.md` using tool-neutral 
 
 ### 5. Generate Kanban Board
 
-1. **Copy the template:** Copy `templates/kanban.html` from ai-os-v2 to `docs/kanban.html` in the project repo. Do not modify the HTML — it is a self-contained board that reads all data from `kanban-state.json` at runtime and auto-refreshes every 30 seconds.
+1. **Copy the template:** Copy `templates/kanban.html` from ai-os-v2 to `docs/kanban.html` in the project repo. Do not modify the HTML — it reads issue metadata from `kanban-state.json` at runtime and auto-refreshes every 30 seconds. When served by Sandcastle's built-in board server, it also fetches live GitHub issue status from `/api/issues` to overlay real-time state.
 
 2. **Generate `docs/kanban-state.json`:** Parse all issue files from `docs/issues/` and produce the JSON state file. The schema:
 
