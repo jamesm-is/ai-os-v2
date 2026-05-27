@@ -101,6 +101,7 @@ Adapt this template to the specific project. Add project-specific rules if the P
 - Copy `slice-audit.md` → `docs/slice-audit.md` (if exists)
 - Copy `issues/` → `docs/issues/` (all vertical slice issue files)
 - Copy any ADR files → `docs/adr/`
+- Copy `vendor/sandcastle/` → `.sandcastle/vendor/sandcastle/` (vendored Sandcastle runtime for to-sandcastle)
 
 ### 4. Install Skills
 

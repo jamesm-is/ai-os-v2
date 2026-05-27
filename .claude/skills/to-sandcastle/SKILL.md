@@ -1248,11 +1248,12 @@ On Windows:
 Copy-Item -Recurse ~/ai-os-v2/vendor/sandcastle .sandcastle/vendor/sandcastle
 ```
 
-Then install sandcastle's runtime dependencies in the project:
+Then install sandcastle's runtime dependencies and the tsx runner:
 
 ```bash
 cd ~/ai-projects/<project-name>
 npm install --save @clack/prompts @effect/cli @effect/platform @effect/platform-node @effect/printer @effect/printer-ansi effect
+npm install --save-dev tsx
 ```
 
 ### 4. Push Issues to GitHub
@@ -1348,7 +1349,7 @@ Setup:
 2. Run: claude setup-token
 3. Run: gh auth token
 4. Copy .env.example to .env and paste both tokens
-5. Run: npx sandcastle
+5. Run: npx tsx .sandcastle/main.mts
 ```
 
 **Subscription + Codex only:**
@@ -1359,7 +1360,7 @@ Setup:
 3. Copy ~/.codex/auth.json to .sandcastle/codex-auth.json
 4. Run: gh auth token
 5. Copy .env.example to .env and paste the GH_TOKEN
-6. Run: npx sandcastle
+6. Run: npx tsx .sandcastle/main.mts
 ```
 
 **Subscription + Hybrid (Claude + Codex):**
@@ -1371,7 +1372,7 @@ Setup:
 4. Copy ~/.codex/auth.json to .sandcastle/codex-auth.json
 5. Run: gh auth token
 6. Copy .env.example to .env and paste CLAUDE_CODE_OAUTH_TOKEN + GH_TOKEN
-7. Run: npx sandcastle
+7. Run: npx tsx .sandcastle/main.mts
 ```
 
 **Subscription + Cursor only:**
@@ -1382,7 +1383,7 @@ Setup:
 3. Copy %APPDATA%\Cursor\auth.json to .sandcastle/cursor-auth.json
 4. Run: gh auth token
 5. Copy .env.example to .env and paste the GH_TOKEN
-6. Run: npx sandcastle
+6. Run: npx tsx .sandcastle/main.mts
 ```
 
 **Subscription + Hybrid (Claude + Cursor):**
@@ -1394,7 +1395,7 @@ Setup:
 4. Copy %APPDATA%\Cursor\auth.json to .sandcastle/cursor-auth.json
 5. Run: gh auth token
 6. Copy .env.example to .env and paste CLAUDE_CODE_OAUTH_TOKEN + GH_TOKEN
-7. Run: npx sandcastle
+7. Run: npx tsx .sandcastle/main.mts
 ```
 
 **Subscription + Hybrid (Claude + Cursor + Codex):**
@@ -1419,7 +1420,7 @@ Setup:
 2. Get your Anthropic API key from console.anthropic.com
 3. Run: gh auth token
 4. Copy .env.example to .env and fill in ANTHROPIC_API_KEY + GH_TOKEN
-5. Run: npx sandcastle
+5. Run: npx tsx .sandcastle/main.mts
 ```
 
 **API key + Codex only:**
@@ -1429,7 +1430,7 @@ Setup:
 2. Get your OpenAI API key from platform.openai.com
 3. Run: gh auth token
 4. Copy .env.example to .env and fill in OPENAI_API_KEY + GH_TOKEN
-5. Run: npx sandcastle
+5. Run: npx tsx .sandcastle/main.mts
 ```
 
 **API key + Hybrid (Claude + Codex):**
@@ -1440,7 +1441,7 @@ Setup:
 3. Get your OpenAI API key from platform.openai.com
 4. Run: gh auth token
 5. Copy .env.example to .env and fill in all three keys
-6. Run: npx sandcastle
+6. Run: npx tsx .sandcastle/main.mts
 ```
 
 **API key + Cursor only:**
@@ -1450,7 +1451,7 @@ Setup:
 2. Generate a Cursor API key from cursor.com/dashboard/integrations
 3. Run: gh auth token
 4. Copy .env.example to .env and fill in CURSOR_API_KEY + GH_TOKEN
-5. Run: npx sandcastle
+5. Run: npx tsx .sandcastle/main.mts
 ```
 
 **API key + Hybrid (Claude + Cursor):**
@@ -1461,7 +1462,7 @@ Setup:
 3. Generate a Cursor API key from cursor.com/dashboard/integrations
 4. Run: gh auth token
 5. Copy .env.example to .env and fill in ANTHROPIC_API_KEY + CURSOR_API_KEY + GH_TOKEN
-6. Run: npx sandcastle
+6. Run: npx tsx .sandcastle/main.mts
 ```
 
 **API key + Hybrid (Claude + Cursor + Codex):**
@@ -1473,7 +1474,7 @@ Setup:
 4. Get your OpenAI API key from platform.openai.com
 5. Run: gh auth token
 6. Copy .env.example to .env and fill in ANTHROPIC_API_KEY + CURSOR_API_KEY + OPENAI_API_KEY + GH_TOKEN
-7. Run: npx sandcastle
+7. Run: npx tsx .sandcastle/main.mts
 ```
 
 ## What to-sandcastle Does NOT Do
