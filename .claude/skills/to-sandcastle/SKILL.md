@@ -28,17 +28,18 @@ Generate the `.sandcastle/` orchestration scaffold in a project repo so it can r
    - **Cursor only** — all agents run via Cursor CLI (one CLI, one auth, one Docker image)
    - **Hybrid (Claude + Codex)** — Claude Code for planning/PR, Codex for implementation/review
    - **Hybrid (Claude + Cursor)** — Claude Code for planning/PR, Cursor for implementation/review
+   - **Hybrid (Claude + Cursor + Codex)** — Claude Code for planning/PR, Cursor for implementation, Codex for review
 
 ## Agent Profiles
 
 The CLI choice determines which models fill each role:
 
-| Role | Claude only | Codex only | Cursor only | Hybrid (Claude+Codex) | Hybrid (Claude+Cursor) |
-|---|---|---|---|---|---|
-| Planner | Opus 4.7 | GPT-5.5 high | Opus 4.7 (via Cursor) | Opus 4.7 | Opus 4.7 |
-| Implementer | Sonnet 4.6 | GPT-5.5 low | Composer 2.5 | GPT-5.5 low | Composer 2.5 |
-| Reviewer | Opus 4.6 | GPT-5.5 medium | GPT-5.5 high (via Cursor) | GPT-5.5 high | GPT-5.5 high (via Cursor) |
-| PR Creator | Opus 4.7 | GPT-5.5 high | Opus 4.7 (via Cursor) | Opus 4.7 | Opus 4.7 |
+| Role | Claude only | Codex only | Cursor only | Hybrid (Claude+Codex) | Hybrid (Claude+Cursor) | Hybrid (Claude+Cursor+Codex) |
+|---|---|---|---|---|---|---|
+| Planner | Opus 4.7 | GPT-5.5 high | Opus 4.7 (via Cursor) | Opus 4.7 | Opus 4.7 | Opus 4.7 |
+| Implementer | Sonnet 4.6 | GPT-5.5 low | Composer 2.5 | GPT-5.5 low | Composer 2.5 | Composer 2.5 |
+| Reviewer | Opus 4.6 | GPT-5.5 medium | GPT-5.5 high (via Cursor) | GPT-5.5 high | GPT-5.5 high (via Cursor) | GPT-5.5 high (via Codex) |
+| PR Creator | Opus 4.7 | GPT-5.5 high | Opus 4.7 (via Cursor) | Opus 4.7 | Opus 4.7 | Opus 4.7 |
 
 The corresponding `main.mts` agent calls:
 
@@ -88,6 +89,16 @@ const AGENTS = {
   planner:     sandcastle.claudeCode("claude-opus-4-7"),
   implementer: cursorAgent("composer-2.5"),
   reviewer:    cursorAgent("gpt-5.5-high"),
+  prCreator:   sandcastle.claudeCode("claude-opus-4-7"),
+};
+```
+
+**Hybrid (Claude + Cursor + Codex):**
+```typescript
+const AGENTS = {
+  planner:     sandcastle.claudeCode("claude-opus-4-7"),
+  implementer: cursorAgent("composer-2.5"),
+  reviewer:    sandcastle.codex("gpt-5.5", { effort: "high" }),
   prCreator:   sandcastle.claudeCode("claude-opus-4-7"),
 };
 ```
@@ -211,6 +222,17 @@ GH_TOKEN=                  # run: gh auth token
 ```
 Hook: `mkdir -p ~/.config/cursor && cp /mnt/cursor-auth.json ~/.config/cursor/auth.json`
 
+**Hybrid (Claude + Cursor + Codex):**
+```
+CLAUDE_CODE_OAUTH_TOKEN=   # run: claude setup-token
+GH_TOKEN=                  # run: gh auth token
+# Cursor: mount %APPDATA%\Cursor\auth.json read-only — copied by onSandboxReady hook
+# Codex: mount ~/.codex/auth.json read-only — copied by onSandboxReady hook
+```
+Hooks:
+- `mkdir -p ~/.config/cursor && cp /mnt/cursor-auth.json ~/.config/cursor/auth.json`
+- `mkdir -p ~/.codex && cp /mnt/codex-auth.json ~/.codex/auth.json`
+
 ### API key auth
 
 **Claude only:**
@@ -249,6 +271,15 @@ CURSOR_API_KEY=
 GH_TOKEN=
 ```
 No special hook needed beyond `{{INSTALL_CMD}}`.
+
+**Hybrid (Claude + Cursor + Codex):**
+```
+ANTHROPIC_API_KEY=
+CURSOR_API_KEY=
+OPENAI_API_KEY=
+GH_TOKEN=
+```
+Hook: `printenv OPENAI_API_KEY | codex login --with-api-key`
 
 ## Stack Detection
 
@@ -457,6 +488,45 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
   | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
   && apt-get update && apt-get install -y gh \
   && rm -rf /var/lib/apt/lists/*
+
+ARG AGENT_UID=1000
+ARG AGENT_GID=1000
+
+RUN groupmod -g $AGENT_GID node && usermod -u $AGENT_UID -g $AGENT_GID -d /home/agent -m -l agent node
+USER ${AGENT_UID}:${AGENT_GID}
+
+# Claude Code CLI (installs to user home)
+RUN curl -fsSL https://claude.ai/install.sh | bash
+# Cursor CLI (installs to user home)
+RUN curl https://cursor.com/install -fsS | bash
+ENV PATH="/home/agent/.local/bin:$PATH"
+
+WORKDIR /home/agent
+
+ENTRYPOINT ["sleep", "infinity"]
+```
+
+**Hybrid (Claude + Cursor + Codex)** — install all three CLIs:
+
+```dockerfile
+FROM node:22-bookworm
+
+RUN apt-get update && apt-get install -y \
+  git \
+  curl \
+  jq \
+  && rm -rf /var/lib/apt/lists/*
+
+# GitHub CLI
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+  | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+  && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+  | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+  && apt-get update && apt-get install -y gh \
+  && rm -rf /var/lib/apt/lists/*
+
+# Codex CLI (install as root before user switch)
+RUN npm install -g @openai/codex
 
 ARG AGENT_UID=1000
 ARG AGENT_GID=1000
@@ -732,7 +802,22 @@ const server = createServer(async (req, res) => {
     res.end(`<script>window.open("/kanban.html");setTimeout(()=>window.close(),500);</script>`);
     return;
   }
-  const resolved = join(docsDir, req.url === "/" ? "kanban.html" : req.url!);
+  if (req.url === "/api/issues") {
+    try {
+      const gh = execSync(
+        'gh issue list --state all --json number,title,state,labels --jq \'[.[] | {number, title, state, labels: [.labels[].name]}]\'',
+        { encoding: "utf-8", timeout: 15000 },
+      );
+      res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-cache" });
+      res.end(gh);
+    } catch {
+      res.writeHead(502);
+      res.end(JSON.stringify({ error: "Failed to query GitHub issues" }));
+    }
+    return;
+  }
+  const pathname = req.url === "/" ? "kanban.html" : new URL(req.url!, "http://localhost").pathname;
+  const resolved = join(docsDir, pathname);
   const filePath = resolve(resolved);
   if (!filePath.startsWith(docsDir)) {
     res.writeHead(403);
@@ -760,14 +845,17 @@ server.listen(BOARD_PORT, () => {
 });
 
 // === Agent Configuration ===
-// Swap models here to change which agent handles each role.
-// See SKILL.md Agent Profiles for the five preset configurations.
 const AGENTS = {
   planner:     {{PLANNER_AGENT}},
   implementer: {{IMPLEMENTER_AGENT}},
   reviewer:    {{REVIEWER_AGENT}},
   prCreator:   {{PR_CREATOR_AGENT}},
 };
+
+// === Docker Sandbox Factory ===
+// When subscription auth requires file mounts (Cursor/Codex auth.json),
+// this factory wires them in so every sandbox gets the same mounts.
+{{DOCKER_SANDBOX_FACTORY}}
 
 const hooks = {
   sandbox: {
@@ -784,7 +872,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   // Phase 1: Plan
   const plan = await sandcastle.run({
     hooks,
-    sandbox: docker(),
+    sandbox: createDockerSandbox(),
     name: "planner",
     maxIterations: 1,
     agent: AGENTS.planner,
@@ -819,7 +907,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     issues.map(async (issue) => {
       const sandbox = await sandcastle.createSandbox({
         branch: issue.branch,
-        sandbox: docker(),
+        sandbox: createDockerSandbox(),
         hooks,
       });
 
@@ -897,7 +985,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   // Phase 3: Create PRs
   await sandcastle.run({
     hooks,
-    sandbox: docker(),
+    sandbox: createDockerSandbox(),
     name: "pr-creator",
     maxIterations: 1,
     agent: AGENTS.prCreator,
@@ -928,6 +1016,37 @@ console.log("Press the shutdown button in the board or close this process to sto
   - **Codex only / Hybrid (Claude+Codex) + API key:** `{ command: "printenv OPENAI_API_KEY | codex login --with-api-key" },`
   - **Cursor only / Hybrid (Claude+Cursor) + subscription:** `{ command: "mkdir -p ~/.config/cursor && cp /mnt/cursor-auth.json ~/.config/cursor/auth.json" },`
   - **Cursor only / Hybrid (Claude+Cursor) + API key:** remove this line entirely (CURSOR_API_KEY env var is sufficient)
+  - **Hybrid (Claude+Cursor+Codex) + subscription:** two hook lines:
+    `{ command: "mkdir -p ~/.config/cursor && cp /mnt/cursor-auth.json ~/.config/cursor/auth.json" },`
+    `{ command: "mkdir -p ~/.codex && cp /mnt/codex-auth.json ~/.codex/auth.json" },`
+  - **Hybrid (Claude+Cursor+Codex) + API key:** `{ command: "printenv OPENAI_API_KEY | codex login --with-api-key" },` (CURSOR_API_KEY env var is sufficient)
+- `{{DOCKER_SANDBOX_FACTORY}}` — based on config:
+  - **No file mounts needed** (Claude only, API key configs, Cursor API key): `const createDockerSandbox = () => docker();`
+  - **Codex subscription auth mount only** (Codex only sub, Hybrid Claude+Codex sub):
+    ```typescript
+    const CODEX_AUTH_PATH = join(process.cwd(), ".sandcastle", "codex-auth.json");
+    const createDockerSandbox = () => docker({
+      mounts: [{ hostPath: CODEX_AUTH_PATH, sandboxPath: "/home/agent/.codex-auth.json", readonly: true }],
+    });
+    ```
+  - **Cursor subscription auth mount only** (Cursor only sub, Hybrid Claude+Cursor sub):
+    ```typescript
+    const CURSOR_AUTH_PATH = join(process.cwd(), ".sandcastle", "cursor-auth.json");
+    const createDockerSandbox = () => docker({
+      mounts: [{ hostPath: CURSOR_AUTH_PATH, sandboxPath: "/home/agent/.cursor-auth.json", readonly: true }],
+    });
+    ```
+  - **Both Cursor + Codex subscription auth mounts** (Hybrid Claude+Cursor+Codex sub):
+    ```typescript
+    const CURSOR_AUTH_PATH = join(process.cwd(), ".sandcastle", "cursor-auth.json");
+    const CODEX_AUTH_PATH = join(process.cwd(), ".sandcastle", "codex-auth.json");
+    const createDockerSandbox = () => docker({
+      mounts: [
+        { hostPath: CURSOR_AUTH_PATH, sandboxPath: "/home/agent/.cursor-auth.json", readonly: true },
+        { hostPath: CODEX_AUTH_PATH, sandboxPath: "/home/agent/.codex-auth.json", readonly: true },
+      ],
+    });
+    ```
 
 ### 3. Wire Up Dependencies
 
@@ -988,7 +1107,7 @@ Files:
 - .env.example        ({auth_description})
 - .gitignore          (excludes .env, logs/, worktrees/)
 
-CLI: {Claude only | Codex only | Cursor only | Hybrid (Claude+Codex) | Hybrid (Claude+Cursor)}
+CLI: {Claude only | Codex only | Cursor only | Hybrid (Claude+Codex) | Hybrid (Claude+Cursor) | Hybrid (Claude+Cursor+Codex)}
 Auth: {Subscription | API key}
 
 Agent config:
@@ -1058,6 +1177,21 @@ Setup:
 7. Run: npx sandcastle
 ```
 
+**Subscription + Hybrid (Claude + Cursor + Codex):**
+```
+Setup:
+1. Complete all Phase 0 issues (provisioning, secrets, external setup)
+2. Run: claude setup-token
+3. Run: agent login (if not already logged in with Cursor Pro subscription)
+4. Copy %APPDATA%\Cursor\auth.json to .sandcastle/cursor-auth.json
+5. Run: codex login (if not already logged in with ChatGPT subscription)
+6. Copy ~/.codex/auth.json to .sandcastle/codex-auth.json
+7. Run: gh auth token
+8. Copy .env.example to .env and paste CLAUDE_CODE_OAUTH_TOKEN + GH_TOKEN
+9. Build Docker image: docker build -t sandcastle:<project-name> .sandcastle/
+10. Run: npx tsx .sandcastle/main.mts
+```
+
 **API key + Claude only:**
 ```
 Setup:
@@ -1108,6 +1242,18 @@ Setup:
 4. Run: gh auth token
 5. Copy .env.example to .env and fill in ANTHROPIC_API_KEY + CURSOR_API_KEY + GH_TOKEN
 6. Run: npx sandcastle
+```
+
+**API key + Hybrid (Claude + Cursor + Codex):**
+```
+Setup:
+1. Complete all Phase 0 issues (provisioning, secrets, external setup)
+2. Get your Anthropic API key from console.anthropic.com
+3. Generate a Cursor API key from cursor.com/dashboard/integrations
+4. Get your OpenAI API key from platform.openai.com
+5. Run: gh auth token
+6. Copy .env.example to .env and fill in ANTHROPIC_API_KEY + CURSOR_API_KEY + OPENAI_API_KEY + GH_TOKEN
+7. Run: npx sandcastle
 ```
 
 ## What to-sandcastle Does NOT Do

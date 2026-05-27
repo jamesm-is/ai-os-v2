@@ -754,11 +754,37 @@ function renderSummary(issues) {
     `${total} issues across ${phases} phases — ${done}/${total} complete`;
 }
 
+function mergeGitHubState(issues, ghIssues) {
+  if (!ghIssues || ghIssues.length === 0) return issues;
+  const ghMap = {};
+  for (const gh of ghIssues) {
+    ghMap[String(gh.number)] = gh;
+  }
+  return issues.map(issue => {
+    const num = issue.id.replace(/^#/, '').replace(/^\d+-0*/, '');
+    const gh = ghMap[num];
+    if (!gh) return issue;
+    const labels = gh.labels || [];
+    if (gh.state === 'closed') return { ...issue, status: 'done' };
+    if (labels.includes('in-progress')) return { ...issue, status: 'in-progress' };
+    if (labels.includes('in-review') || labels.includes('review')) return { ...issue, status: 'review' };
+    return issue;
+  });
+}
+
 async function loadBoard() {
   try {
     const res = await fetch('kanban-state.json?' + Date.now());
     const data = await res.json();
-    const issues = data.issues;
+    let issues = data.issues;
+
+    try {
+      const ghRes = await fetch('/api/issues');
+      if (ghRes.ok) {
+        const ghIssues = await ghRes.json();
+        issues = mergeGitHubState(issues, ghIssues);
+      }
+    } catch {}
 
     cardIndex = 0;
     renderSummary(issues);
