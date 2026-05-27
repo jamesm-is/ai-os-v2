@@ -648,7 +648,7 @@ Never use sequential numbering like `002_*.sql` — parallel branches will colli
 
 # FEEDBACK LOOPS
 
-Before committing, run `{{TYPECHECK_CMD}}` and `{{TEST_CMD}}` to ensure the tests pass.
+Before committing, run `{{TYPECHECK_CMD}}`, `{{TEST_CMD}}`, and `{{BUILD_CMD}}` to ensure everything passes.
 
 # COMMIT
 
@@ -763,7 +763,7 @@ These branches correspond to the following issues:
 For each branch:
 
 1. Push the branch to the remote: `git push origin <branch>`
-2. Run `{{TYPECHECK_CMD}}` and `{{TEST_CMD}}` on the branch first to confirm everything passes
+2. Run `{{TYPECHECK_CMD}}`, `{{TEST_CMD}}`, and `{{BUILD_CMD}}` on the branch first to confirm everything passes
 3. Create a pull request using `gh pr create`:
    - Title: the issue title
    - Body: a summary of what was implemented, key decisions, and files changed
