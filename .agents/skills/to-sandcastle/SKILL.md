@@ -809,6 +809,27 @@ function getLowestOpenPhase(): number | null {
   return phases.length > 0 ? Math.min(...phases) : null;
 }
 
+async function waitForPRsMerged(branches: string[]): Promise<void> {
+  while (true) {
+    const unmerged = branches.filter((branch) => {
+      try {
+        const state = execSync(
+          `gh pr list --head ${branch} --json state --jq '.[0].state'`,
+          { encoding: "utf-8" },
+        ).trim();
+        return state !== "" && state !== "MERGED";
+      } catch {
+        return false;
+      }
+    });
+
+    if (unmerged.length === 0) return;
+
+    console.log(`  ${unmerged.length} PR(s) awaiting merge. Checking again in 30s...`);
+    await new Promise((resolve) => setTimeout(resolve, 30000));
+  }
+}
+
 // === Kanban Board Server ===
 // Serves docs/ so the kanban board auto-refreshes during the run.
 const MIME: Record<string, string> = {
@@ -895,25 +916,19 @@ const hooks = {
   },
 };
 
+let phaseBranches: string[] = [];
+
 for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
-  console.log(`\n=== Iteration ${iteration}/${MAX_ITERATIONS} ===\n`);
-
-  // Determine target phase and fetch issues
-  let currentPhase: number | null = null;
-  let issuesJson: string;
-
-  if (EXECUTION_MODE === "phase-by-phase") {
-    currentPhase = getLowestOpenPhase();
-    if (currentPhase === null) {
-      console.log("No open phases with ready-for-agent issues. Exiting.");
-      break;
-    }
-    console.log(`Phase-by-phase mode: targeting Phase ${currentPhase}`);
-    issuesJson = fetchReadyIssues(`phase-${currentPhase}`);
-  } else {
-    issuesJson = fetchReadyIssues();
+  // Determine current phase (always filter by phase — both modes)
+  const currentPhase = getLowestOpenPhase();
+  if (currentPhase === null) {
+    console.log("No open phases with ready-for-agent issues. All done.");
+    break;
   }
 
+  console.log(`\n=== Iteration ${iteration}/${MAX_ITERATIONS} — Phase ${currentPhase} ===\n`);
+
+  const issuesJson = fetchReadyIssues(`phase-${currentPhase}`);
   const parsedIssues = JSON.parse(issuesJson);
   if (parsedIssues.length === 0) {
     console.log("No ready-for-agent issues found. Exiting.");
@@ -1052,16 +1067,32 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   });
 
   console.log("\nPRs created.");
+  phaseBranches.push(...completedBranches);
 
-  // Phase gate: stop after current phase completes
-  if (EXECUTION_MODE === "phase-by-phase" && currentPhase !== null) {
-    const remaining = JSON.parse(fetchReadyIssues(`phase-${currentPhase}`));
-    if (remaining.length === 0) {
-      console.log(`\n=== Phase ${currentPhase} complete ===`);
-      console.log("All issues in this phase have PRs. Review and merge them,");
-      console.log("then restart Sandcastle to begin the next phase.");
+  // Check if current phase is done
+  const remaining = JSON.parse(fetchReadyIssues(`phase-${currentPhase}`));
+  if (remaining.length === 0) {
+    console.log(`\n=== Phase ${currentPhase} complete ===`);
+
+    if (EXECUTION_MODE === "phase-by-phase") {
+      console.log("Review and merge the PRs, then restart Sandcastle for the next phase.");
       break;
     }
+
+    // Full mode: check if more phases exist
+    const nextPhase = getLowestOpenPhase();
+    if (nextPhase === null) {
+      console.log("All phases complete.");
+      break;
+    }
+
+    // Wait for this phase's PRs to be merged before starting the next
+    console.log(`Waiting for Phase ${currentPhase} PRs to merge before starting Phase ${nextPhase}...`);
+    console.log("Review and merge the open PRs. Sandcastle will continue automatically.\n");
+    await waitForPRsMerged(phaseBranches);
+    phaseBranches = [];
+    console.log(`Phase ${currentPhase} merged. Continuing to Phase ${nextPhase}...`);
+  } else {
     console.log(`\nPhase ${currentPhase}: ${remaining.length} issue(s) remaining. Continuing...`);
   }
 }
