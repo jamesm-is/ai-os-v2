@@ -135,7 +135,7 @@ Your agent reads `AGENTS.md` as its boot file. Run each skill in order: `/align`
 
 ## Skills
 
-Nine skills total, installed in both `.claude/skills/` and `.agents/skills/`:
+Nine launcher skills are installed in this repo in both `.claude/skills/` and `.agents/skills/`:
 
 | Skill | Category | Description |
 |---|---|---|
@@ -189,7 +189,11 @@ ai-os-v2/
 │   └── sandcastle/                # Vendored sandcastle SDK v0.6.3 (dist/ + src/)
 ├── relays/                        # Session relay files (gitignored)
 ├── templates/
-│   └── kanban.html                # Kanban board template (copied to projects at handoff)
+│   ├── kanban.html                # Kanban board template
+│   └── skills/                    # Project-repo skill templates (copied by handoff)
+│       └── to-sandcastle/
+├── outputs/
+│   └── pipeline-diagram.html      # Visual pipeline reference
 ├── context/
 │   ├── about.example.md           # Profile template (copy to about.md)
 │   └── operating-rules.md        # Pipeline rules and conventions
