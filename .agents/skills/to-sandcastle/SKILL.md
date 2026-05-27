@@ -16,7 +16,7 @@ Generate the `.sandcastle/` orchestration scaffold in a project repo so it can r
 3. Read `projects/<project-name>/context.md` for domain vocabulary.
 4. Confirm the project repo exists at `~/ai-projects/<project-name>`.
 5. Confirm the project has a GitHub remote (`gh repo view` in the project directory).
-6. **Ask the user two questions:**
+6. **Ask the user three questions:**
 
    **Auth mode:**
    - **Subscription** — no API keys, uses existing Claude/ChatGPT subscriptions
@@ -29,6 +29,10 @@ Generate the `.sandcastle/` orchestration scaffold in a project repo so it can r
    - **Hybrid (Claude + Codex)** — Claude Code for planning/PR, Codex for implementation/review
    - **Hybrid (Claude + Cursor)** — Claude Code for planning/PR, Cursor for implementation/review
    - **Hybrid (Claude + Cursor + Codex)** — Claude Code for planning/PR, Cursor for implementation, Codex for review
+
+   **Execution mode:**
+   - **Full** — run all phases continuously until every issue has a PR
+   - **Phase-by-phase** — complete the current phase (all its issues get PRs), then stop so the user can review and merge before the next phase starts
 
 ## Agent Profiles
 
@@ -560,12 +564,10 @@ For **Python** projects: Replace `node:22-bookworm` with `python:3.12-bookworm`.
 ```markdown
 # ISSUES
 
-Here are the open issues in the repo:
+Here are the open issues ready for work:
 
 <issues-json>
-
-!`gh issue list --state open --label ready-for-agent --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'`
-
+{{ISSUES_JSON}}
 </issues-json>
 
 The list above has already been filtered to issues ready for work.
@@ -779,6 +781,33 @@ import { exec, execSync } from "child_process";
 const MAX_ITERATIONS = 10;
 const BASE_BRANCH = execSync("git rev-parse --verify main 2>/dev/null && echo main || echo master", { encoding: "utf-8" }).trim();
 const BOARD_PORT = 4040;
+const EXECUTION_MODE: "full" | "phase-by-phase" = "{{EXECUTION_MODE}}";
+
+// === Issue Fetching ===
+function fetchReadyIssues(phaseLabel?: string): string {
+  const labelArgs = phaseLabel
+    ? `--label ready-for-agent --label ${phaseLabel}`
+    : "--label ready-for-agent";
+  return execSync(
+    `gh issue list --state open ${labelArgs} --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'`,
+    { encoding: "utf-8" },
+  );
+}
+
+function getLowestOpenPhase(): number | null {
+  const raw = execSync(
+    "gh issue list --state open --label ready-for-agent --json labels --jq '[.[].labels[].name]'",
+    { encoding: "utf-8" },
+  );
+  const labels: string[] = JSON.parse(raw);
+  const phases = [...new Set(
+    labels
+      .filter((l: string) => l.startsWith("phase-"))
+      .map((l: string) => parseInt(l.replace("phase-", ""), 10))
+      .filter((n: number) => !isNaN(n)),
+  )];
+  return phases.length > 0 ? Math.min(...phases) : null;
+}
 
 // === Kanban Board Server ===
 // Serves docs/ so the kanban board auto-refreshes during the run.
@@ -869,7 +898,29 @@ const hooks = {
 for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   console.log(`\n=== Iteration ${iteration}/${MAX_ITERATIONS} ===\n`);
 
-  // Phase 1: Plan
+  // Determine target phase and fetch issues
+  let currentPhase: number | null = null;
+  let issuesJson: string;
+
+  if (EXECUTION_MODE === "phase-by-phase") {
+    currentPhase = getLowestOpenPhase();
+    if (currentPhase === null) {
+      console.log("No open phases with ready-for-agent issues. Exiting.");
+      break;
+    }
+    console.log(`Phase-by-phase mode: targeting Phase ${currentPhase}`);
+    issuesJson = fetchReadyIssues(`phase-${currentPhase}`);
+  } else {
+    issuesJson = fetchReadyIssues();
+  }
+
+  const parsedIssues = JSON.parse(issuesJson);
+  if (parsedIssues.length === 0) {
+    console.log("No ready-for-agent issues found. Exiting.");
+    break;
+  }
+
+  // Plan
   const plan = await sandcastle.run({
     hooks,
     sandbox: createDockerSandbox(),
@@ -877,6 +928,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     maxIterations: 1,
     agent: AGENTS.planner,
     promptFile: "./.sandcastle/plan-prompt.md",
+    promptArgs: { ISSUES_JSON: issuesJson },
   });
 
   const planMatch = plan.stdout.match(/<plan>([\s\S]*?)<\/plan>/);
@@ -1000,6 +1052,18 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   });
 
   console.log("\nPRs created.");
+
+  // Phase gate: stop after current phase completes
+  if (EXECUTION_MODE === "phase-by-phase" && currentPhase !== null) {
+    const remaining = JSON.parse(fetchReadyIssues(`phase-${currentPhase}`));
+    if (remaining.length === 0) {
+      console.log(`\n=== Phase ${currentPhase} complete ===`);
+      console.log("All issues in this phase have PRs. Review and merge them,");
+      console.log("then restart Sandcastle to begin the next phase.");
+      break;
+    }
+    console.log(`\nPhase ${currentPhase}: ${remaining.length} issue(s) remaining. Continuing...`);
+  }
 }
 
 console.log("\nAll done. Board still running at http://localhost:" + BOARD_PORT);
@@ -1009,7 +1073,9 @@ console.log("Press the shutdown button in the board or close this process to sto
 **Template variable substitution:**
 
 - `{{PLANNER_AGENT}}`, `{{IMPLEMENTER_AGENT}}`, `{{REVIEWER_AGENT}}`, `{{PR_CREATOR_AGENT}}` — from the Agent Profiles section matching the CLI choice.
+- `{{EXECUTION_MODE}}` — `"full"` or `"phase-by-phase"` based on the user's execution mode choice.
 - `{{INSTALL_CMD}}` — detected package install command (e.g., `npm install`).
+- `{{ISSUES_JSON}}` — not a static template variable. Populated at runtime by `main.mts` via `fetchReadyIssues()` and passed as a `promptArg` to the planner. No substitution needed during scaffold generation.
 - `{{CODEX_AUTH_HOOK_LINE}}` — based on config:
   - **Claude only (any auth):** remove this line entirely
   - **Codex only / Hybrid (Claude+Codex) + subscription:** `{ command: "mkdir -p ~/.codex && cp /mnt/codex-auth.json ~/.codex/auth.json" },`
@@ -1109,6 +1175,7 @@ Files:
 
 CLI: {Claude only | Codex only | Cursor only | Hybrid (Claude+Codex) | Hybrid (Claude+Cursor) | Hybrid (Claude+Cursor+Codex)}
 Auth: {Subscription | API key}
+Execution: {Full | Phase-by-phase}
 
 Agent config:
 - Planner:     {model + effort}
