@@ -104,44 +104,28 @@ Adapt this template to the specific project. Add project-specific rules if the P
 
 ### 4. Install Skills
 
-Install skills for both Claude Code and Codex into the project repo.
+Install skills for both Claude Code and Codex into the project repo. These make the project self-governing — it can run the full planning loop for new features without returning to ai-os-v2.
 
-**Claude Code skills** go in `.claude/skills/<name>/SKILL.md` with YAML frontmatter (name, description). These are Claude Code slash commands.
+**Claude Code skills** go in `.claude/skills/<name>/SKILL.md`.
+**Codex skills** go in `.agents/skills/<name>/SKILL.md`.
+Both sets contain the same content — the only difference is the directory prefix. Install every skill into both locations.
 
-**Codex skills** go in `.agents/skills/<name>/SKILL.md` with identical YAML frontmatter (name, description). These are Codex app skills.
+**Pipeline skills** — copy verbatim from `templates/skills/` in ai-os-v2. These are project-mode variants with correct project-repo paths already baked in. No adaptation needed.
 
-Both sets contain the same content — the only difference is the directory prefix (`.claude/skills/` vs `.agents/skills/`).
+- `templates/skills/align/SKILL.md` → `.claude/skills/align/SKILL.md` and `.agents/skills/align/SKILL.md`
+- `templates/skills/to-prd/SKILL.md` → `.claude/skills/to-prd/SKILL.md` and `.agents/skills/to-prd/SKILL.md`
+- `templates/skills/to-issues/SKILL.md` → `.claude/skills/to-issues/SKILL.md` and `.agents/skills/to-issues/SKILL.md`
+- `templates/skills/validate-slices/SKILL.md` → `.claude/skills/validate-slices/SKILL.md` and `.agents/skills/validate-slices/SKILL.md`
+- `templates/skills/to-sandcastle/SKILL.md` → `.claude/skills/to-sandcastle/SKILL.md` and `.agents/skills/to-sandcastle/SKILL.md`
 
-**Pipeline skills** (adapt paths for project-repo context):
+**Architecture skills** — copy verbatim from ai-os-v2 (already path-neutral):
 
-- **align** — same grill process, but reads `CONTEXT.md` at project root and grills against the existing codebase (grill-with-docs behavior). Skips stack derivation unless the user wants to change stacks. Appends new terms to CONTEXT.md rather than creating it fresh.
-- **to-prd** — produces a **feature PRD** scoped to the change, saved to `docs/prd-<feature-slug>.md`. References existing architecture from the original PRD. Does not re-interview.
-- **to-issues** — appends new vertical slice issues to `docs/issues/` using the next available phase/number. Respects existing issue numbering and dependencies.
-- **validate-slices** — same audit checks, reads issues from `docs/issues/` and PRD from `docs/`.
-- **to-sandcastle** — already idempotent. Pushes new issues to GitHub and updates the kanban if it exists.
+- `.agents/skills/improve-codebase-architecture/` → copy the full directory (SKILL.md, LANGUAGE.md, DEEPENING.md, HTML-REPORT.md, INTERFACE-DESIGN.md) into both `.claude/skills/improve-codebase-architecture/` and `.agents/skills/improve-codebase-architecture/`.
 
-**Architecture skills:**
+**Utility skills** — copy verbatim from ai-os-v2 (already path-neutral):
 
-- **improve-codebase-architecture** — copy the full skill directory (SKILL.md, LANGUAGE.md, DEEPENING.md, HTML-REPORT.md, INTERFACE-DESIGN.md) verbatim from ai-os-v2 into both `.claude/skills/improve-codebase-architecture/` and `.agents/skills/improve-codebase-architecture/`. No path adaptation needed — it already reads CONTEXT.md at repo root and `docs/adr/`.
-
-**Utility skills:**
-
-- **relay** — compact the current conversation into a relay document for session handoff. Saves to `relays/` at repo root (agent-neutral location). Install in both `.claude/skills/relay/SKILL.md` and `.agents/skills/relay/SKILL.md`.
-- **relay-handoff** — pick up a relay from a previous session. Reads from `relays/` at repo root. Install in both `.claude/skills/relay-handoff/SKILL.md` and `.agents/skills/relay-handoff/SKILL.md`.
-
-**Adaptation rules for pipeline skills:**
-
-When generating each skill for the project repo, apply these path translations:
-
-| ai-os-v2 path | Project repo path |
-|---|---|
-| `projects/<name>/context.md` | `CONTEXT.md` (root) |
-| `projects/<name>/prd.md` | `docs/prd.md` |
-| `projects/<name>/issues/` | `docs/issues/` |
-| `projects/<name>/status.md` | not used — project repos don't have a status file |
-| `projects/<name>/align.md` | `docs/align-<feature-slug>.md` |
-
-Each skill's description should note it works in "existing codebase" mode. The skill body should reference existing project files (CONTEXT.md, CLAUDE.md, codebase) as context for grilling and planning.
+- `.agents/skills/relay/SKILL.md` → both `.claude/skills/relay/SKILL.md` and `.agents/skills/relay/SKILL.md`
+- `.agents/skills/relay-handoff/SKILL.md` → both `.claude/skills/relay-handoff/SKILL.md` and `.agents/skills/relay-handoff/SKILL.md`
 
 Also generate an `AGENTS.md` boot file alongside `CLAUDE.md` using tool-neutral language (no slash commands — reference `.agents/skills/<name>/SKILL.md` paths instead).
 
