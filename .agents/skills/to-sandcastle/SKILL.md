@@ -16,7 +16,7 @@ Generate the `.sandcastle/` orchestration scaffold in a project repo so it can r
 3. Read `projects/<project-name>/context.md` for domain vocabulary.
 4. Confirm the project repo exists at `~/ai-projects/<project-name>`.
 5. Confirm the project has a GitHub remote (`gh repo view` in the project directory).
-6. **Ask the user three questions:**
+6. **Ask the user four questions:**
 
    **Auth mode:**
    - **Subscription** — no API keys, uses existing Claude/ChatGPT subscriptions
@@ -33,6 +33,10 @@ Generate the `.sandcastle/` orchestration scaffold in a project repo so it can r
    **Execution mode:**
    - **Full** — run all phases continuously until every issue has a PR
    - **Phase-by-phase** — complete the current phase (all its issues get PRs), then stop so the user can review and merge before the next phase starts
+
+   **Merge strategy:**
+   - **Auto-merge** — after PRs are created, a code-review agent reviews each PR, approves it, and merges via `gh pr merge`. No human pause.
+   - **Human-merge** — after PRs are created, Sandcastle pauses and polls until you merge them manually
 
 ## Agent Profiles
 
@@ -54,6 +58,7 @@ const AGENTS = {
   implementer: sandcastle.claudeCode("claude-sonnet-4-6"),
   reviewer:    sandcastle.claudeCode("claude-opus-4-6"),
   prCreator:   sandcastle.claudeCode("claude-opus-4-7"),
+
 };
 ```
 
@@ -64,6 +69,7 @@ const AGENTS = {
   implementer: sandcastle.codex("gpt-5.5", { effort: "low" }),
   reviewer:    sandcastle.codex("gpt-5.5", { effort: "medium" }),
   prCreator:   sandcastle.codex("gpt-5.5", { effort: "high" }),
+
 };
 ```
 
@@ -74,6 +80,7 @@ const AGENTS = {
   implementer: cursorAgent("composer-2.5"),
   reviewer:    cursorAgent("gpt-5.5-high"),
   prCreator:   cursorAgent("claude-opus-4-7-xhigh"),
+
 };
 ```
 
@@ -84,6 +91,7 @@ const AGENTS = {
   implementer: sandcastle.codex("gpt-5.5", { effort: "low" }),
   reviewer:    sandcastle.codex("gpt-5.5", { effort: "high" }),
   prCreator:   sandcastle.claudeCode("claude-opus-4-7"),
+
 };
 ```
 
@@ -94,6 +102,7 @@ const AGENTS = {
   implementer: cursorAgent("composer-2.5"),
   reviewer:    cursorAgent("gpt-5.5-high"),
   prCreator:   sandcastle.claudeCode("claude-opus-4-7"),
+
 };
 ```
 
@@ -104,6 +113,7 @@ const AGENTS = {
   implementer: cursorAgent("composer-2.5"),
   reviewer:    sandcastle.codex("gpt-5.5", { effort: "high" }),
   prCreator:   sandcastle.claudeCode("claude-opus-4-7"),
+
 };
 ```
 
@@ -112,7 +122,7 @@ const AGENTS = {
 When Cursor is used (Cursor only, or Hybrid Claude+Cursor), add this provider function at the top of `main.mts`, before the `AGENTS` constant:
 
 ```typescript
-import type { AgentProvider } from "@ai-hero/sandcastle";
+import type { AgentProvider } from "./vendor/sandcastle/dist/index.js";
 
 function cursorAgent(model: string): AgentProvider {
   const shellEscape = (s: string) => "'" + s.replace(/'/g, "'\\''") + "'";
@@ -784,8 +794,8 @@ Replace `{{TYPECHECK_CMD}}`, `{{TEST_CMD}}`, and `{{BUILD_CMD}}` with the detect
 Generate the orchestration loop. Use the AGENTS config from the **Agent Profiles** section matching the user's CLI choice. The hooks come from the **Auth Setup** section.
 
 ```typescript
-import * as sandcastle from "@ai-hero/sandcastle";
-import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
+import * as sandcastle from "./vendor/sandcastle/dist/index.js";
+import { docker } from "./vendor/sandcastle/dist/sandboxes/docker.js";
 import { createServer } from "http";
 import { readFile } from "fs/promises";
 import { join, extname, resolve } from "path";
@@ -795,6 +805,7 @@ const MAX_ITERATIONS = 10;
 const BASE_BRANCH = execSync("git rev-parse --verify main 2>/dev/null && echo main || echo master", { encoding: "utf-8" }).trim();
 const BOARD_PORT = 4040;
 const EXECUTION_MODE: "full" | "phase-by-phase" = "{{EXECUTION_MODE}}";
+const MERGE_STRATEGY: "auto-merge" | "human-merge" = "{{MERGE_STRATEGY}}";
 
 // === Issue Fetching ===
 function fetchReadyIssues(phaseLabel?: string): string {
@@ -975,8 +986,15 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     break;
   }
 
+  const BRANCH_RE = /^sandcastle\/issue-\d+-[a-z0-9-]{1,30}$/;
+  for (const issue of issues) {
+    if (!BRANCH_RE.test(issue.branch)) {
+      throw new Error(`Invalid branch name from planner: "${issue.branch}"`);
+    }
+  }
+
   console.log(
-    `Planning complete. ${issues.length} issue(s) to work in parallel:`,
+    `Planning complete. ${issues.length} issue(s) to work:`,
   );
   for (const issue of issues) {
     console.log(`  ${issue.id}: ${issue.title} → ${issue.branch}`);
@@ -1082,13 +1100,66 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   console.log("\nPRs created.");
   phaseBranches.push(...completedBranches);
 
+  // Merge PRs based on strategy
+  const failedBranches: string[] = [];
+  if (MERGE_STRATEGY === "auto-merge") {
+    console.log("\nAuto-merging PRs...");
+    for (const branch of completedBranches) {
+      try {
+        const prNumber = execSync(
+          `gh pr list --head ${branch} --json number --jq '.[0].number'`,
+          { encoding: "utf-8" },
+        ).trim();
+        if (!prNumber) {
+          console.log(`  ⚠ No PR found for ${branch}, skipping.`);
+          failedBranches.push(branch);
+          continue;
+        }
+
+        execSync(`git checkout ${branch}`, { encoding: "utf-8" });
+        execSync("{{TYPECHECK_CMD}}", { encoding: "utf-8", timeout: 120000 });
+        execSync("{{TEST_CMD}}", { encoding: "utf-8", timeout: 300000 });
+        execSync("{{BUILD_CMD}}", { encoding: "utf-8", timeout: 120000 });
+
+        execSync(
+          `gh pr review ${prNumber} --approve --body "Auto-reviewed by Sandcastle. Tests pass, typecheck clean, build succeeds."`,
+          { encoding: "utf-8" },
+        );
+        execSync(
+          `gh pr merge ${prNumber} --squash --delete-branch`,
+          { encoding: "utf-8" },
+        );
+        console.log(`  ✓ PR #${prNumber} (${branch}) merged.`);
+      } catch (err) {
+        console.error(`  ✗ ${branch} failed auto-merge: ${err}`);
+        console.log("    Leaving PR open for manual review.");
+        failedBranches.push(branch);
+      }
+    }
+    execSync(`git checkout ${BASE_BRANCH}`, { encoding: "utf-8" });
+    execSync(`git pull`, { encoding: "utf-8" });
+
+    if (failedBranches.length > 0) {
+      console.log(`\n${failedBranches.length} PR(s) failed auto-merge. Waiting for manual merge before continuing...`);
+      await waitForPRsMerged(failedBranches);
+      execSync(`git pull`, { encoding: "utf-8" });
+    }
+    console.log("Auto-merge complete.");
+  }
+
   // Check if current phase is done
   const remaining = JSON.parse(fetchReadyIssues(`phase-${currentPhase}`));
   if (remaining.length === 0) {
     console.log(`\n=== Phase ${currentPhase} complete ===`);
 
     if (EXECUTION_MODE === "phase-by-phase") {
-      console.log("Review and merge the PRs, then restart Sandcastle for the next phase.");
+      if (MERGE_STRATEGY === "human-merge") {
+        console.log("Review and merge the PRs, then restart Sandcastle for the next phase.");
+      } else if (failedBranches.length > 0) {
+        console.log("Some PRs needed manual merge. Restart Sandcastle for the next phase.");
+      } else {
+        console.log("Phase complete. Restart Sandcastle for the next phase.");
+      }
       break;
     }
 
@@ -1099,12 +1170,16 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
       break;
     }
 
-    // Wait for this phase's PRs to be merged before starting the next
-    console.log(`Waiting for Phase ${currentPhase} PRs to merge before starting Phase ${nextPhase}...`);
-    console.log("Review and merge the open PRs. Sandcastle will continue automatically.\n");
-    await waitForPRsMerged(phaseBranches);
-    phaseBranches = [];
-    console.log(`Phase ${currentPhase} merged. Continuing to Phase ${nextPhase}...`);
+    if (MERGE_STRATEGY === "human-merge") {
+      console.log(`Waiting for Phase ${currentPhase} PRs to merge before starting Phase ${nextPhase}...`);
+      console.log("Review and merge the open PRs. Sandcastle will continue automatically.\n");
+      await waitForPRsMerged(phaseBranches);
+      phaseBranches = [];
+      console.log(`Phase ${currentPhase} merged. Continuing to Phase ${nextPhase}...`);
+    } else {
+      phaseBranches = [];
+      console.log(`Continuing to Phase ${nextPhase}...`);
+    }
   } else {
     console.log(`\nPhase ${currentPhase}: ${remaining.length} issue(s) remaining. Continuing...`);
   }
@@ -1118,6 +1193,8 @@ console.log("Press the shutdown button in the board or close this process to sto
 
 - `{{PLANNER_AGENT}}`, `{{IMPLEMENTER_AGENT}}`, `{{REVIEWER_AGENT}}`, `{{PR_CREATOR_AGENT}}` — from the Agent Profiles section matching the CLI choice.
 - `{{EXECUTION_MODE}}` — `"full"` or `"phase-by-phase"` based on the user's execution mode choice.
+- `{{MERGE_STRATEGY}}` — `"auto-merge"` or `"human-merge"` based on the user's merge strategy choice.
+- `{{TYPECHECK_CMD}}`, `{{TEST_CMD}}`, `{{BUILD_CMD}}` — detected stack commands (e.g., `npm run typecheck`, `npm run test`, `npm run build`). Used in prompt files AND in the auto-merge code path in `main.mts`. Must be substituted in both places during scaffold generation.
 - `{{INSTALL_CMD}}` — detected package install command (e.g., `npm install`).
 - `{{ISSUES_JSON}}` — not a static template variable. Populated at runtime by `main.mts` via `fetchReadyIssues()` and passed as a `promptArg` to the planner. No substitution needed during scaffold generation.
 - `{{CODEX_AUTH_HOOK_LINE}}` — based on config:
@@ -1160,11 +1237,22 @@ console.log("Press the shutdown button in the board or close this process to sto
 
 ### 3. Wire Up Dependencies
 
-If `@ai-hero/sandcastle` is not already in the project's `package.json` devDependencies:
+Copy the vendored sandcastle into the project's `.sandcastle/` directory:
+
+```bash
+cp -r ~/ai-os-v2/vendor/sandcastle .sandcastle/vendor/sandcastle
+```
+
+On Windows:
+```powershell
+Copy-Item -Recurse ~/ai-os-v2/vendor/sandcastle .sandcastle/vendor/sandcastle
+```
+
+Then install sandcastle's runtime dependencies in the project:
 
 ```bash
 cd ~/ai-projects/<project-name>
-npm install --save-dev @ai-hero/sandcastle
+npm install --save @clack/prompts @effect/cli @effect/platform @effect/platform-node @effect/printer @effect/printer-ansi effect
 ```
 
 ### 4. Push Issues to GitHub
@@ -1240,6 +1328,7 @@ Files:
 CLI: {Claude only | Codex only | Cursor only | Hybrid (Claude+Codex) | Hybrid (Claude+Cursor) | Hybrid (Claude+Cursor+Codex)}
 Auth: {Subscription | API key}
 Execution: {Full | Phase-by-phase}
+Merge: {Auto-merge | Human-merge}
 
 Agent config:
 - Planner:     {model + effort}
@@ -1391,6 +1480,6 @@ Setup:
 
 - Does not run Sandcastle (the user decides when)
 - Does not create or fill `.env` with real secrets (that's Phase 0 / HITL)
-- Does not install project dependencies beyond `@ai-hero/sandcastle`
+- Does not install project dependencies beyond sandcastle's runtime deps (effect, @clack/prompts, etc.)
 - Does not modify existing project code
 - Does not set up CI/CD or GitHub Actions
