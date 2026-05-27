@@ -244,5 +244,5 @@ or start working issues manually. Open docs/kanban.html in a browser to visualiz
 
 - Does not scaffold code (no src/, no package.json, no framework setup)
 - Does not install hooks or coding standards (those are stack-specific — the first coding session or /to-sandcastle handles them)
-- Does not set up Sandcastle or agent orchestration (that's /to-sandcastle)
+- Does not generate the Sandcastle scaffold or orchestration config — only seeds the vendored runtime (that's /to-sandcastle)
 - Does not run the installed skills — it only installs them so the project can use them later
