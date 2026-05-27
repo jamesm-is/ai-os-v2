@@ -292,7 +292,7 @@ Read the PRD's Technical Stack section and classify the project:
 | Stack | Base Image | Package Hook | Test Command | Typecheck Command | Build Command |
 |---|---|---|---|---|---|
 | **Node/TypeScript** | `node:22-bookworm` | `npm install` | `npm run test` | `npm run typecheck` | `npm run build` |
-| **Python** | `python:3.12-bookworm` | `pip install -e ".[dev]"` | `pytest` | `pyright` or `mypy` (from PRD) | `python -m build` or N/A |
+| **Python** | `python:3.12-bookworm` | `pip install -e ".[dev]"` | `pytest` | `pyright` or `mypy` (from PRD) | `python -m build` (if `pyproject.toml` has a build-backend) or `true` (no-op) |
 
 If the stack doesn't match either pattern, generate a Node-based scaffold and warn the user to customize the Dockerfile and hooks.
 
