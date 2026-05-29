@@ -23,7 +23,7 @@ Generate the `.sandcastle/` orchestration scaffold so this project can run auton
    - **Codex only** — all agents run via Codex CLI
    - **Cursor only** — all agents run via Cursor CLI
    - **Hybrid (Claude + Codex)** — Claude Code for planning/PR, Codex for implementation/review
-   - **Hybrid (Claude + Cursor)** — Claude Code for planning/PR, Cursor for implementation/review
+   - **Hybrid (Claude + Cursor)** — Claude Code for planning/review/PR, Cursor for implementation
    - **Hybrid (Claude + Cursor + Codex)** — Claude Code for planning/PR, Cursor for implementation, Codex for review
 
    **Execution mode:**
@@ -36,24 +36,26 @@ Generate the `.sandcastle/` orchestration scaffold so this project can run auton
 
 ## Agent Profiles
 
-The CLI choice determines which models fill each role:
+The CLI choice determines which models fill each role.
+
+**Model routing rule (never violate):** Anthropic models run only via Claude Code (Anthropic API/subscription). OpenAI models run only via Codex (OpenAI API/subscription). Cursor runs only Composer 2.5. Cursor is never used as a pass-through for Anthropic or OpenAI models.
 
 | Role | Claude only | Codex only | Cursor only | Hybrid (Claude+Codex) | Hybrid (Claude+Cursor) | Hybrid (Claude+Cursor+Codex) |
 |---|---|---|---|---|---|---|
-| Planner | Opus 4.7 | GPT-5.5 high | Opus 4.7 (via Cursor) | Opus 4.7 | Opus 4.7 | Opus 4.7 |
+| Planner | Opus 4.8 | GPT-5.5 high | Composer 2.5 | Opus 4.8 | Opus 4.8 | Opus 4.8 |
 | Implementer | Sonnet 4.6 | GPT-5.5 low | Composer 2.5 | GPT-5.5 low | Composer 2.5 | Composer 2.5 |
-| Reviewer | Opus 4.6 | GPT-5.5 medium | GPT-5.5 high (via Cursor) | GPT-5.5 high | GPT-5.5 high (via Cursor) | GPT-5.5 high (via Codex) |
-| PR Creator | Opus 4.7 | GPT-5.5 high | Opus 4.7 (via Cursor) | Opus 4.7 | Opus 4.7 | Opus 4.7 |
+| Reviewer | Opus 4.8 | GPT-5.5 medium | Composer 2.5 | GPT-5.5 high | Opus 4.8 | GPT-5.5 high (via Codex) |
+| PR Creator | Opus 4.8 | GPT-5.5 high | Composer 2.5 | Opus 4.8 | Opus 4.8 | Opus 4.8 |
 
 The corresponding `main.mts` agent calls:
 
 **Claude only:**
 ```typescript
 const AGENTS = {
-  planner:     sandcastle.claudeCode("claude-opus-4-7"),
+  planner:     sandcastle.claudeCode("claude-opus-4-8"),
   implementer: sandcastle.claudeCode("claude-sonnet-4-6"),
-  reviewer:    sandcastle.claudeCode("claude-opus-4-6"),
-  prCreator:   sandcastle.claudeCode("claude-opus-4-7"),
+  reviewer:    sandcastle.claudeCode("claude-opus-4-8"),
+  prCreator:   sandcastle.claudeCode("claude-opus-4-8"),
 
 };
 ```
@@ -72,10 +74,10 @@ const AGENTS = {
 **Cursor only:**
 ```typescript
 const AGENTS = {
-  planner:     cursorAgent("claude-opus-4-7-xhigh"),
+  planner:     cursorAgent("composer-2.5"),
   implementer: cursorAgent("composer-2.5"),
-  reviewer:    cursorAgent("gpt-5.5-high"),
-  prCreator:   cursorAgent("claude-opus-4-7-xhigh"),
+  reviewer:    cursorAgent("composer-2.5"),
+  prCreator:   cursorAgent("composer-2.5"),
 
 };
 ```
@@ -83,10 +85,10 @@ const AGENTS = {
 **Hybrid (Claude + Codex):**
 ```typescript
 const AGENTS = {
-  planner:     sandcastle.claudeCode("claude-opus-4-7"),
+  planner:     sandcastle.claudeCode("claude-opus-4-8"),
   implementer: sandcastle.codex("gpt-5.5", { effort: "low" }),
   reviewer:    sandcastle.codex("gpt-5.5", { effort: "high" }),
-  prCreator:   sandcastle.claudeCode("claude-opus-4-7"),
+  prCreator:   sandcastle.claudeCode("claude-opus-4-8"),
 
 };
 ```
@@ -94,10 +96,10 @@ const AGENTS = {
 **Hybrid (Claude + Cursor):**
 ```typescript
 const AGENTS = {
-  planner:     sandcastle.claudeCode("claude-opus-4-7"),
+  planner:     sandcastle.claudeCode("claude-opus-4-8"),
   implementer: cursorAgent("composer-2.5"),
-  reviewer:    cursorAgent("gpt-5.5-high"),
-  prCreator:   sandcastle.claudeCode("claude-opus-4-7"),
+  reviewer:    sandcastle.claudeCode("claude-opus-4-8"),
+  prCreator:   sandcastle.claudeCode("claude-opus-4-8"),
 
 };
 ```
@@ -105,10 +107,10 @@ const AGENTS = {
 **Hybrid (Claude + Cursor + Codex):**
 ```typescript
 const AGENTS = {
-  planner:     sandcastle.claudeCode("claude-opus-4-7"),
+  planner:     sandcastle.claudeCode("claude-opus-4-8"),
   implementer: cursorAgent("composer-2.5"),
   reviewer:    sandcastle.codex("gpt-5.5", { effort: "high" }),
-  prCreator:   sandcastle.claudeCode("claude-opus-4-7"),
+  prCreator:   sandcastle.claudeCode("claude-opus-4-8"),
 
 };
 ```
@@ -192,6 +194,8 @@ function cursorAgent(model: string): AgentProvider {
 ## Auth Setup by Configuration
 
 The auth mode + CLI choice determines what goes in `.env.example`, what the `onSandboxReady` hooks do, and what gets installed in the Dockerfile.
+
+**Validation status:** API-key auth is the validated path (EnvResolver auto-injects keys declared in `.sandcastle/.env` into every sandbox; Codex additionally needs the `codex login --with-api-key` hook). Subscription auth relies on mounting an OAuth token *file* — the mount `sandboxPath` and the hook's copy source must reference the same path (both `/mnt/<cli>-auth.json`). Prefer API-key mode for a project's first run.
 
 ### Subscription auth
 
@@ -1208,14 +1212,14 @@ console.log("Press the shutdown button in the board or close this process to sto
     ```typescript
     const CODEX_AUTH_PATH = join(process.cwd(), ".sandcastle", "codex-auth.json");
     const createDockerSandbox = () => docker({
-      mounts: [{ hostPath: CODEX_AUTH_PATH, sandboxPath: "/home/agent/.codex-auth.json", readonly: true }],
+      mounts: [{ hostPath: CODEX_AUTH_PATH, sandboxPath: "/mnt/codex-auth.json", readonly: true }],
     });
     ```
   - **Cursor subscription auth mount only** (Cursor only sub, Hybrid Claude+Cursor sub):
     ```typescript
     const CURSOR_AUTH_PATH = join(process.cwd(), ".sandcastle", "cursor-auth.json");
     const createDockerSandbox = () => docker({
-      mounts: [{ hostPath: CURSOR_AUTH_PATH, sandboxPath: "/home/agent/.cursor-auth.json", readonly: true }],
+      mounts: [{ hostPath: CURSOR_AUTH_PATH, sandboxPath: "/mnt/cursor-auth.json", readonly: true }],
     });
     ```
   - **Both Cursor + Codex subscription auth mounts** (Hybrid Claude+Cursor+Codex sub):
@@ -1224,8 +1228,8 @@ console.log("Press the shutdown button in the board or close this process to sto
     const CODEX_AUTH_PATH = join(process.cwd(), ".sandcastle", "codex-auth.json");
     const createDockerSandbox = () => docker({
       mounts: [
-        { hostPath: CURSOR_AUTH_PATH, sandboxPath: "/home/agent/.cursor-auth.json", readonly: true },
-        { hostPath: CODEX_AUTH_PATH, sandboxPath: "/home/agent/.codex-auth.json", readonly: true },
+        { hostPath: CURSOR_AUTH_PATH, sandboxPath: "/mnt/cursor-auth.json", readonly: true },
+        { hostPath: CODEX_AUTH_PATH, sandboxPath: "/mnt/codex-auth.json", readonly: true },
       ],
     });
     ```
